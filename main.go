@@ -1,14 +1,43 @@
 package main
 
 import (
+	"OUCSearcher/config"
+	"OUCSearcher/models"
+	"OUCSearcher/tools"
 	"fmt"
 	"golang.org/x/net/html"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
+	"time"
 )
+
+const NumberOfCrawl = 10
+
+// init 初始化数据库连接
+func init() {
+	cfg := config.NewConfig()
+	//database.Initialize(cfg)
+	// 迁移数据库
+	// 打开数据库连接
+	db, err := gorm.Open(mysql.Open(cfg.DSN()), &gorm.Config{})
+	if err != nil {
+		log.Fatal("failed to connect database:", err)
+	}
+
+	// 自动迁移
+	err = db.AutoMigrate(&models.Page{})
+	if err != nil {
+		log.Fatal("failed to migrate database:", err)
+	}
+
+	log.Println("Database migrated successfully!")
+}
 
 // Fetch downloads the webpage and returns its HTML content
 func Fetch(url string) (*html.Node, error) {
@@ -56,72 +85,129 @@ func RenderHTML(n *html.Node) string {
 	return b.String()
 }
 
-// ExtractLinks extracts and returns all the links from a webpage
-func ExtractLinks(doc *html.Node, baseURL string) []string {
-	var links []string
-	var f func(*html.Node)
-	f = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "a" {
-			for _, attr := range n.Attr {
-				if attr.Key == "href" {
-					link := attr.Val
-					// Handle relative URLs
-					if strings.HasPrefix(link, "/") {
-						link = baseURL + link
-					}
-					links = append(links, link)
-				}
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			f(c)
-		}
-	}
-	f(doc)
-	return links
-}
-
-func worker(url string, wg *sync.WaitGroup, results chan<- []string) {
+// worker 用于下载网页并提取链接
+func worker(url string, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	fmt.Println("Fetching:", url)
 
 	doc, err := Fetch(url)
 	if err != nil {
 		log.Println("Error fetching:", url, err)
+		return err
+	}
+	page := &models.Page{Url: url}
+	// 解析当前url
+	// 解析url
+	urlInfo := tools.ParseURL(url)
+	page.Host = urlInfo.Host
+	page.Scheme = urlInfo.Scheme
+	page.Domain1 = urlInfo.Domain1
+	page.Domain2 = urlInfo.Domain2
+	page.Path = urlInfo.Path
+	page.Query = urlInfo.Query
+
+	// 解析标题
+	//fmt.Println(tools.ExtractTitle(doc))
+	page.Title = tools.ExtractTitle(doc)
+	// 解析文本
+	//fmt.Println(tools.ExtractText(doc))
+	page.Text = tools.ExtractText(doc)
+	// CrawTime    time.Time `gorm:"default:'2001-01-01 00:00:01'"`
+	page.CrawTime = time.Now()
+	page.CrawDone = 1
+
+	res, pId, err := page.UpdateOrCreateByUrl()
+	if err != nil {
+		log.Println("Error updating or creating page:", url, err)
+		return err
+	}
+	rowsAffected, err := res.RowsAffected()
+
+	if err != nil {
+		log.Println("Error getting rows affected:", url, err)
+		return err
+	}
+	if rowsAffected == 0 {
+		log.Println("No rows affected:", url)
+		return fmt.Errorf("no rows affected")
+	} else if rowsAffected > 1 {
+		log.Println("Multiple rows affected:", url)
+		return fmt.Errorf("有重复的行")
+	} else {
+		log.Println("One row affected:", url)
+	}
+
+	// 提取链接
+	fmt.Println(pId)
+	links := tools.ExtractLinks(doc, url)
+	links = tools.FilterUrl(links)
+
+	for _, link := range links {
+		chilePage := &models.Page{Url: link, ReferrerId: pId, CrawTime: time.Now()}
+		res, err := chilePage.CreateOrPassByUrl()
+		if err != nil {
+			log.Println("Error updating or creating page:", link, err)
+			return err
+		}
+		if res == nil {
+			log.Println("已经爬取在数据库中：", link)
+		} else {
+			log.Println("添加链接：", link)
+		}
+	}
+
+	return nil
+}
+
+// 从数据库中取出10条未爬取的链接进行并发爬取
+func crawl() {
+	// 取出10条未爬取的链接
+	urls, err := models.GetNUnCrawled(NumberOfCrawl)
+	if err != nil {
+		log.Println("Error getting uncrawled pages:", err)
 		return
 	}
 
-	links := ExtractLinks(doc, url)
-	results <- links
+	var wg sync.WaitGroup
+
+	for _, url := range urls {
+		wg.Add(1)
+		go func() {
+			err := worker(url, &wg)
+			if err != nil {
+				log.Println("Error fetching:", url, err)
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func main() {
-	startURL := "https://www.ouc.edu.cn/"
-	//doc, err := Fetch(url)
-	//if err != nil {
-	//	fmt.Println("Error:", err)
-	//	return
-	//}
-	//fmt.Println("Successfully fetched and parsed the document:", doc)
-	//
-	//// 渲染并打印 HTML 内容
-	//htmlContent := RenderHTML(doc)
-	//fmt.Println(htmlContent)
-
-	var wg sync.WaitGroup
-	results := make(chan []string)
-
-	wg.Add(1)
-	go worker(startURL, &wg, results)
-
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	for links := range results {
-		fmt.Println("Found links:", links)
+	currentTime := time.Now().Format("2006-01-02") // 格式化为 YYYY-MM-DD
+	logFileName := currentTime + ".log"
+	// 创建一个日志文件
+	file, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatal(err)
 	}
-}
+	defer file.Close()
+	// 设置日志输出到文件
+	log.SetOutput(file)
+	// 设置日志格式，记录文件名和行号
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	//startURL := "https://www.ouc.edu.cn/"
+	//
+	//var wg sync.WaitGroup
+	//
+	//wg.Add(1)
+	//go func() {
+	//	err := worker(startURL, &wg)
+	//	if err != nil {
+	//		log.Println("Error fetching:", startURL, err)
+	//	}
+	//}()
+	//
+	//wg.Wait()
 
-//
+	//database.Close()
+}
