@@ -4,26 +4,32 @@ import (
 	"OUCSearcher/database"
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 )
 
 type Page struct {
-	ID          uint      `gorm:"primaryKey"`                    // primary key
-	Url         string    `gorm:"default:null"`                  // 网页链接
-	Host        string    `gorm:"default:null"`                  // 域名
-	CrawDone    int       `gorm:"type:tinyint(1);default:0"`     // 已爬
-	DicDone     int       `gorm:"type:tinyint(1);default:0"`     // 已拆分进词典
-	CrawTime    time.Time `gorm:"default:'2001-01-01 00:00:01'"` // 爬取时刻
-	OriginTitle string    `gorm:"default:null"`                  // 上级页面超链接文字
-	ReferrerId  uint      `gorm:"default:0"`                     // 上级页面ID
-	Scheme      string    `gorm:"default:null"`                  // http/https
-	Domain1     string    `gorm:"default:null"`                  // 一级域名后缀
-	Domain2     string    `gorm:"default:null"`                  // 二级域名后缀
-	Path        string    `gorm:"default:null"`                  // URL 路径
-	Query       string    `gorm:"default:null"`                  // URL 查询参数
-	Title       string    `gorm:"default:null"`                  // 页面标题
-	Text        string    `gorm:"type:LONGTEXT;default:null"`    // 页面文字
+	ID          uint      `gorm:"primaryKey"`                              // primary key
+	Url         string    `gorm:"default:null;uniqueIndex:idx_unique_url"` // 网页链接
+	Host        string    `gorm:"default:null"`                            // 域名
+	CrawDone    int       `gorm:"type:tinyint(1);default:0"`               // 已爬
+	DicDone     int       `gorm:"type:tinyint(1);default:0"`               // 已拆分进词典
+	CrawTime    time.Time `gorm:"default:'2001-01-01 00:00:01'"`           // 爬取时刻
+	OriginTitle string    `gorm:"default:''"`                              // 上级页面超链接文字
+	ReferrerId  uint      `gorm:"default:0"`                               // 上级页面ID
+	Scheme      string    `gorm:"default:null"`                            // http/https
+	Domain1     string    `gorm:"default:null"`                            // 一级域名后缀
+	Domain2     string    `gorm:"default:null"`                            // 二级域名后缀
+	Path        string    `gorm:"default:null"`                            // URL 路径
+	Query       string    `gorm:"default:null"`                            // URL 查询参数
+	Title       string    `gorm:"default:null"`                            // 页面标题
+	Text        string    `gorm:"type:LONGTEXT;default:null"`              // 页面文字
 	CreatedAt   time.Time // 插入时间
+}
+
+// TableName 指定表名
+func (Page) TableName() string {
+	return "page"
 }
 
 // GetByUrl 通过url获取pages
@@ -31,6 +37,7 @@ func (p *Page) GetByUrl(url string) ([]Page, error) {
 	sqlString := "SELECT * FROM page WHERE url = ?"
 	rows, err := database.DB.Query(sqlString, url)
 	if err != nil {
+		log.Println("Error getting page by url:", url, err)
 		return nil, err
 	}
 	defer func(rows *sql.Rows) {
@@ -61,6 +68,7 @@ func (p *Page) UpdateOrCreateByUrl() (sql.Result, uint, error) {
 	// 查询是否存在
 	pages, err := p.GetByUrl(p.Url)
 	if err != nil {
+		log.Println("Error getting page by url:", p.Url, err)
 		return nil, 0, err
 	}
 	// 获取pages的个数
@@ -69,6 +77,7 @@ func (p *Page) UpdateOrCreateByUrl() (sql.Result, uint, error) {
 		// 不存在则创建
 		create, err := p.Create()
 		if err != nil {
+			log.Println("Error creating page:", p.Url, err)
 			return nil, 0, err
 		}
 		return create, uint(p.ID), nil
@@ -77,6 +86,7 @@ func (p *Page) UpdateOrCreateByUrl() (sql.Result, uint, error) {
 		p.ID = pages[0].ID
 		update, err := p.Update()
 		if err != nil {
+			log.Println("Error updating page:", p.Url, err)
 			return nil, 0, err
 		}
 		return update, p.ID, nil

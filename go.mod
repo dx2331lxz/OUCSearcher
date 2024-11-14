@@ -14,5 +14,6 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/yanyiwu/gojieba v1.4.4 // indirect
 	golang.org/x/text v0.19.0 // indirect
 )

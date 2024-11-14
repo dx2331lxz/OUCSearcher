@@ -21,11 +21,16 @@ type Config struct {
 	RedisPassword string
 }
 
-func NewConfig() *Config {
-	err := godotenv.Load()
+func init() {
+	path, _ := os.Getwd()
+	err := godotenv.Load(path + "/.env")
+	fmt.Println("加载.env :", path+"/.env")
 	if err != nil {
-		log.Fatalf("Error loading .env file")
+		log.Fatal("Error loading .env file")
 	}
+}
+
+func NewConfig() *Config {
 	return &Config{
 		DBUser:     os.Getenv("DB_USER"),
 		DBPassword: os.Getenv("DB_PASSWORD"),

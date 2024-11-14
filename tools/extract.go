@@ -22,6 +22,26 @@ func removeBase64Images(s string) string {
 	return re.ReplaceAllString(s, "")
 }
 
+// 全局编译正则表达式
+var whitespaceAndLetterRegexp = regexp.MustCompile(`[a-zA-Z\s\p{Zs}]+`)
+
+// StringStrip 替换输入字符串中的空白字符、零宽空格和英文字符为连字符 "-"
+func StringStrip(input string) string {
+	if input == "" {
+		return ""
+	}
+	// 替换空白字符、零宽空格和英文字符为连字符
+	result := whitespaceAndLetterRegexp.ReplaceAllString(input, "-")
+	// 去除前导和尾随的连字符
+	result = strings.Trim(result, "-")
+	// 将连续的连字符合并为一个
+	result = strings.Join(strings.FieldsFunc(result, func(r rune) bool {
+		return r == '-'
+	}), "-")
+
+	return result
+}
+
 // ExtractTitle 解析html的title
 func ExtractTitle(doc *html.Node) string {
 	var title string
@@ -61,8 +81,8 @@ func ExtractText(doc *html.Node) string {
 		}
 	}
 	f(doc)
-	s := replaceMultipleSpacesAndNewlines(b.String())
-	s = removeBase64Images(s)
+	s := removeBase64Images(b.String())
+	s = StringStrip(s)
 	return s
 }
 
