@@ -37,3 +37,8 @@ func (Page) TableName() string {
 ## todo
 1. 频率控制--使用redis
 2. 页面上添加面试题
+
+## 去重
+使用redis创建了两个set，一个叫做visited_urls，另一个叫all_urls，visited_urls用来存储已经访问过的url，all_urls用来存储所有的url
+visited_urls用来防止之前添加到待爬取list中的url没有被爬取，又被添加到待爬取list中，从而进行重复爬取
+all_urls用来防止重复添加和数据库中url重复的url到待爬取list中，确保数据库中存储的url唯一

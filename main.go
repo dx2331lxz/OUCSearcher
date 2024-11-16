@@ -6,6 +6,7 @@ import (
 	"OUCSearcher/models"
 	"OUCSearcher/tools"
 	"fmt"
+	"github.com/robfig/cron/v3"
 	"golang.org/x/net/html"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -141,45 +142,63 @@ func worker(url string, wg *sync.WaitGroup) error {
 	page.CrawTime = time.Now()
 	page.CrawDone = 1
 
-	res, pId, err := page.UpdateOrCreateByUrl()
+	_, err = page.Update()
 
 	if err != nil {
 		log.Println("Error updating or creating page:", url, err)
 		return err
 	}
-	database.AddUrlToSet(url)
-	rowsAffected, err := res.RowsAffected()
 
+	err = models.AddUrlToVisitedSet(url)
 	if err != nil {
-		log.Println("Error getting rows affected:", url, err)
 		return err
 	}
-	if rowsAffected == 0 {
-		log.Println("No rows affected:", url)
-		return fmt.Errorf("no rows affected")
-	} else if rowsAffected > 1 {
-		log.Println("Multiple rows affected:", url)
-		return fmt.Errorf("有重复的行")
-	} else {
-		log.Println("One row affected:", url)
-	}
+
+	//rowsAffected, err := res.RowsAffected()
+	//
+	//if err != nil {
+	//	log.Println("Error getting rows affected:", url, err)
+	//	return err
+	//}
+	//if rowsAffected == 0 {
+	//	log.Println("No rows affected:", url)
+	//	return fmt.Errorf("no rows affected")
+	//} else if rowsAffected > 1 {
+	//	log.Println("Multiple rows affected:", url)
+	//	return fmt.Errorf("有重复的行")
+	//} else {
+	//	log.Println("One row affected:", url)
+	//}
 
 	// 提取链接
 	//fmt.Println(pId)
 	links := tools.ExtractLinks(doc, url)
 	links = tools.FilterUrl(links)
-
 	for _, link := range links {
-		chilePage := &models.Page{Url: link, ReferrerId: pId, CrawTime: time.Now()}
-		res, err := chilePage.CreateOrPassByUrl()
+		isIn, err := models.IsUrlInAllUrls(link)
 		if err != nil {
-			log.Println("Error updating or creating page:", link, err)
+			log.Println("Error checking if url is in all urls:", link, err)
 			return err
 		}
-		if res == nil {
-			log.Println("已经爬取在数据库中：", link)
+		if !isIn {
+			err = models.AddUrlToAllUrlSet(link)
+			if err != nil {
+				return err
+			}
+			chilePage := &models.Page{Url: link, CrawTime: time.Now()}
+			res, err := chilePage.Create()
+			if err != nil {
+				log.Println("Error updating or creating page:", link, err)
+				return err
+			}
+			if res == nil {
+				log.Println("已经爬取在数据库中：", link)
+			} else {
+				log.Println("添加链接：", link)
+			}
+
 		} else {
-			log.Println("添加链接：", link)
+			log.Println("URL already in all urls:", link)
 		}
 	}
 
@@ -187,21 +206,15 @@ func worker(url string, wg *sync.WaitGroup) error {
 }
 
 // crawl 用于爬取网页
-func crawl() int {
-	// 取出n条未爬取的链接
-	//urls, err := database.GetUrlsFromRedis(NumberOfCrawl)
-	//if err != nil {
-	//	log.Println("Error getting uncrawled pages:", err)
-	//	return 0
-	//}
-	//log.Println("Fetched", len(urls), "uncrawled pages", urls)
+func crawl() {
 
 	var wg sync.WaitGroup
 
 	for i := 0; i < NumberOfCrawl; i++ {
 		wg.Add(1)
 		go func() {
-			url, err := database.GetUrlFromRedis()
+			// 获取url
+			url, err := models.GetUrlFromRedis()
 			if err != nil {
 				log.Println("Error getting url from redis:", err)
 				return
@@ -210,6 +223,16 @@ func crawl() int {
 				log.Println("No URL fetched, skipping...")
 				return // 空值直接跳过
 			}
+			isVisited, err := models.IsUrlVisited(url)
+			if err != nil {
+				log.Println("Error getting url from redis:", err)
+				return
+			}
+			if isVisited {
+				log.Println("URL has been visited, skipping...")
+				return
+			}
+
 			err = worker(url, &wg)
 			if err != nil {
 				log.Println("Error fetching:", url, err)
@@ -217,7 +240,14 @@ func crawl() int {
 		}()
 	}
 	wg.Wait()
-	return 0
+}
+
+// 定时启动crawl
+func startCrawl() {
+	c := cron.New()
+	// 每个10s执行一次
+	c.AddFunc("*/10 * * * * *", crawl)
+	c.Start()
 }
 
 func main() {
@@ -235,7 +265,7 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	// 启动redis从mysql获取urls
-	database.GetUrlsFromMysqlTimer()
+	models.GetUrlsFromMysqlTimer()
 
 	// 迁移数据库
 	//migrate()
@@ -253,16 +283,7 @@ func main() {
 	//wg.Wait()
 
 	// 开始爬取，定时爬取，每隔一段时间爬取一次
-	//for {
-	//	urlNum := crawl()
-	//	if urlNum == 0 {
-	//		log.Println("No new pages to crawl, waiting...")
-	//		break
-	//	} else {
-	//		log.Println("Fetched", urlNum, "new pages, waiting...")
-	//	}
-	//	time.Sleep(1 * time.Second)
-	//}
+	startCrawl()
 
 	database.Close()
 	database.CloseRedis()
