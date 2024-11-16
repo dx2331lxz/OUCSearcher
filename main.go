@@ -186,13 +186,10 @@ func worker(url string, wg *sync.WaitGroup) error {
 				return err
 			}
 			chilePage := &models.Page{Url: link, CrawTime: time.Now()}
-			res, err := chilePage.Create()
+			_, err := chilePage.Create()
 			if err != nil {
 				log.Println("Error updating or creating page:", link, err)
 				return err
-			}
-			if res == nil {
-				log.Println("已经爬取在数据库中：", link)
 			} else {
 				log.Println("添加链接：", link)
 			}
@@ -244,7 +241,7 @@ func crawl() {
 
 // 定时启动crawl
 func startCrawl() {
-	c := cron.New()
+	c := cron.New(cron.WithSeconds())
 	// 每个10s执行一次
 	c.AddFunc("*/10 * * * * *", crawl)
 	c.Start()
@@ -284,7 +281,7 @@ func main() {
 
 	// 开始爬取，定时爬取，每隔一段时间爬取一次
 	startCrawl()
-
+	select {}
 	database.Close()
 	database.CloseRedis()
 }

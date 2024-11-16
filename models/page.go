@@ -61,7 +61,7 @@ func GetTableName(url string) (string, error) {
 	lastByte := hashValue[len(hashValue)-1]
 
 	// 将最后一个字节转换为小写十六进制字符
-	lastHexChar := fmt.Sprintf("%x", lastByte)
+	lastHexChar := fmt.Sprintf("%02x", lastByte)
 
 	// 返回分表名称，格式为 page_<lastHexChar>
 	return fmt.Sprintf("page_%s", lastHexChar), nil
@@ -145,12 +145,27 @@ func (p *Page) Create() (sql.Result, error) {
 func (p *Page) Update() (sql.Result, error) {
 	// 获取表名
 	tableName, err := GetTableName(p.Url)
-	sqlString := fmt.Sprintf("UPDATE %s SET url = ?, host = ?, craw_done = ?, dic_done = ?, craw_time = ?, origin_title = ?, referrer_id = ?, scheme = ?, domain1 = ?, domain2 = ?, path = ?, query = ?, title = ?, text = ?, created_at = ? WHERE id = ?", tableName)
-	result, err := database.DB.Exec(sqlString, p.Url, p.Host, p.CrawDone, p.DicDone, p.CrawTime, p.OriginTitle, p.ReferrerId, p.Scheme, p.Domain1, p.Domain2, p.Path, p.Query, p.Title, p.Text, time.Now(), p.ID)
+	sqlString := fmt.Sprintf("UPDATE %s SET host = ?, craw_done = ?, dic_done = ?, craw_time = ?, origin_title = ?, referrer_id = ?, scheme = ?, domain1 = ?, domain2 = ?, path = ?, query = ?, title = ?, text = ?, created_at = ? WHERE url = ?", tableName)
+	//fmt.Println(sqlString, p.Url, p.Host, p.CrawDone, p.DicDone, p.CrawTime, p.OriginTitle, p.ReferrerId, p.Scheme, p.Domain1, p.Domain2, p.Path, p.Query, p.Title, p.Text, time.Now(), p.ID)
+	result, err := database.DB.Exec(sqlString, p.Host, p.CrawDone, p.DicDone, p.CrawTime, p.OriginTitle, p.ReferrerId, p.Scheme, p.Domain1, p.Domain2, p.Path, p.Query, p.Title, p.Text, time.Now(), p.Url)
 	if err != nil {
 		log.Println("Error updating page:", p.Url, err)
 		return nil, err
 	}
+	// 获取影响的行数
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Println("Error getting rows affected:", err)
+		return nil, err
+	}
+
+	if rowsAffected == 0 {
+		log.Println("No rows updated for URL:", p.Url)
+	} else {
+		//fmt.Println(sqlString, p.Url)
+		log.Printf("Successfully updated page: %s", p.Url)
+	}
+
 	return result, nil
 }
 

@@ -15,9 +15,10 @@ func GetUrlsFromMysql(n int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	// 从mysql中取出1000条url
 	// 获取TableSuffix
+
 	tableSuffix := fmt.Sprintf("%02x", n)
 	// 获取未爬取的url
-	urls, err := GetNUnCrawled(tableSuffix, 1000)
+	urls, err := GetNUnCrawled(tableSuffix, 100)
 	if err != nil {
 		return
 	}
@@ -39,9 +40,9 @@ func GetUrlsFromMysql(n int, wg *sync.WaitGroup) {
 func GetUrlsFromMysqlTimer() {
 	// 使用协程执行定时任务
 	var wg sync.WaitGroup
-	c := cron.New()
+	c := cron.New(cron.WithSeconds())
 	// 每个10s执行一次
-	c.AddFunc("*/10 * * * * *", func() {
+	c.AddFunc("*/120 * * * * *", func() {
 		for i := 0; i < 256; i++ {
 			wg.Add(1)
 			go GetUrlsFromMysql(i, &wg)
@@ -68,7 +69,7 @@ func GetUrlsFromMysqlTimer() {
 
 // GetUrlFromRedis 从redis中阻塞地取出1条url
 func GetUrlFromRedis() (string, error) {
-	url, err := database.RDB.BRPop(context.Background(), 20, "urls").Result()
+	url, err := database.RDB.BRPop(context.Background(), 0, "urls").Result()
 	if err != nil {
 		return "", err
 	}
@@ -128,13 +129,17 @@ func AddUrlToAllUrlSet(url string) error {
 	hashedUrl := fmt.Sprintf("%d", h.Sum32()) // 将哈希值转换为字符串形式
 
 	// 将哈希值添加到 Redis 的 set 集合中
-	err = database.RDB.SAdd(ctx, "all_urls", hashedUrl).Err()
+	result, err := database.RDB.SAdd(ctx, "all_urls", hashedUrl).Result()
 	if err != nil {
 		// 错误处理：Redis 操作失败
 		return fmt.Errorf("failed to add hashed URL to Redis set: %v", err)
 	}
+	if result == 1 {
+		log.Printf("Added hashed URL to set: %s (original URL: %s)", hashedUrl, url)
+	} else {
+		log.Printf("URL already in all urls: %s", url)
+	}
 
-	log.Printf("Added hashed URL to set: %s (original URL: %s)", hashedUrl, url)
 	return nil
 }
 
