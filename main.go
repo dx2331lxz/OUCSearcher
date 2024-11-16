@@ -18,10 +18,32 @@ import (
 	"time"
 )
 
-const NumberOfCrawl = 200
+const NumberOfCrawl = 1000
 
 // init 初始化数据库连接
 func init() {
+	cfg := config.NewConfig()
+	database.Initialize(cfg)
+	database.InitializeRedis(cfg)
+
+	// 迁移数据库
+	// 打开数据库连接
+	//db, err := gorm.Open(mysql.Open(cfg.DSN()), &gorm.Config{})
+	//if err != nil {
+	//	log.Fatal("failed to connect database:", err)
+	//}
+	//
+	//// 自动迁移
+	//err = db.AutoMigrate(&models.Page{})
+	//if err != nil {
+	//	log.Fatal("failed to migrate database:", err)
+	//}
+	//
+	//log.Println("Database migrated successfully!")
+}
+
+// 数据库迁移
+func migrate() {
 	cfg := config.NewConfig()
 	database.Initialize(cfg)
 	// 迁移数据库
@@ -30,14 +52,17 @@ func init() {
 	if err != nil {
 		log.Fatal("failed to connect database:", err)
 	}
-
-	// 自动迁移
-	err = db.AutoMigrate(&models.Page{})
-	if err != nil {
-		log.Fatal("failed to migrate database:", err)
+	// 创建 256 张表
+	for i := 0; i < 256; i++ {
+		tableName := fmt.Sprintf("page_%02x", i)
+		// 自动迁移
+		err = db.Table(tableName).AutoMigrate(&models.Page{})
+		if err != nil {
+			log.Fatal("failed to migrate database:", err)
+		} else {
+			log.Printf("Database %s migrated successfully!\n", tableName)
+		}
 	}
-
-	log.Println("Database migrated successfully!")
 }
 
 // Fetch downloads the webpage and returns its HTML content
@@ -90,7 +115,6 @@ func RenderHTML(n *html.Node) string {
 func worker(url string, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	fmt.Println("Fetching:", url)
-
 	doc, err := Fetch(url)
 	if err != nil {
 		log.Println("Error fetching:", url, err)
@@ -118,10 +142,12 @@ func worker(url string, wg *sync.WaitGroup) error {
 	page.CrawDone = 1
 
 	res, pId, err := page.UpdateOrCreateByUrl()
+
 	if err != nil {
 		log.Println("Error updating or creating page:", url, err)
 		return err
 	}
+	database.AddUrlToSet(url)
 	rowsAffected, err := res.RowsAffected()
 
 	if err != nil {
@@ -160,29 +186,38 @@ func worker(url string, wg *sync.WaitGroup) error {
 	return nil
 }
 
-// 从数据库中取出10条未爬取的链接进行并发爬取
+// crawl 用于爬取网页
 func crawl() int {
-	// 取出10条未爬取的链接
-	urls, err := models.GetNUnCrawled(NumberOfCrawl)
-	if err != nil {
-		log.Println("Error getting uncrawled pages:", err)
-		return 0
-	}
-	log.Println("Fetched", len(urls), "uncrawled pages", urls)
+	// 取出n条未爬取的链接
+	//urls, err := database.GetUrlsFromRedis(NumberOfCrawl)
+	//if err != nil {
+	//	log.Println("Error getting uncrawled pages:", err)
+	//	return 0
+	//}
+	//log.Println("Fetched", len(urls), "uncrawled pages", urls)
 
 	var wg sync.WaitGroup
 
-	for _, url := range urls {
+	for i := 0; i < NumberOfCrawl; i++ {
 		wg.Add(1)
 		go func() {
-			err := worker(url, &wg)
+			url, err := database.GetUrlFromRedis()
+			if err != nil {
+				log.Println("Error getting url from redis:", err)
+				return
+			}
+			if url == "" {
+				log.Println("No URL fetched, skipping...")
+				return // 空值直接跳过
+			}
+			err = worker(url, &wg)
 			if err != nil {
 				log.Println("Error fetching:", url, err)
 			}
 		}()
 	}
 	wg.Wait()
-	return len(urls)
+	return 0
 }
 
 func main() {
@@ -198,6 +233,13 @@ func main() {
 	log.SetOutput(file)
 	// 设置日志格式，记录文件名和行号
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+
+	// 启动redis从mysql获取urls
+	database.GetUrlsFromMysqlTimer()
+
+	// 迁移数据库
+	//migrate()
+
 	// 设置启动url
 	//startURL := "https://www.ouc.edu.cn/"
 	//var wg sync.WaitGroup
@@ -211,16 +253,17 @@ func main() {
 	//wg.Wait()
 
 	// 开始爬取，定时爬取，每隔一段时间爬取一次
-	for {
-		urlNum := crawl()
-		if urlNum == 0 {
-			log.Println("No new pages to crawl, waiting...")
-			break
-		} else {
-			log.Println("Fetched", urlNum, "new pages, waiting...")
-		}
-		time.Sleep(1 * time.Second)
-	}
+	//for {
+	//	urlNum := crawl()
+	//	if urlNum == 0 {
+	//		log.Println("No new pages to crawl, waiting...")
+	//		break
+	//	} else {
+	//		log.Println("Fetched", urlNum, "new pages, waiting...")
+	//	}
+	//	time.Sleep(1 * time.Second)
+	//}
 
 	database.Close()
+	database.CloseRedis()
 }

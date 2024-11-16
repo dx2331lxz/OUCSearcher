@@ -27,10 +27,22 @@ type Page struct {
 	CreatedAt   time.Time // 插入时间
 }
 
+// PageDynamic 定义动态表名
+//type PageDynamic struct {
+//	Page        // 嵌套 Page
+//	TableSuffix string
+//}
+
+//// 动态表名方法
+//func (p PageDynamic) TableName() string {
+//	fmt.Println("page_" + p.TableSuffix)
+//	return fmt.Sprintf("page_%s", p.TableSuffix)
+//}
+
 // TableName 指定表名
-func (Page) TableName() string {
-	return "page"
-}
+//func (Page) TableName() string {
+//	return "page"
+//}
 
 // GetByUrl 通过url获取pages
 func (p *Page) GetByUrl(url string) ([]Page, error) {
@@ -133,8 +145,8 @@ func (p *Page) CreateOrPassByUrl() (sql.Result, error) {
 }
 
 // GetNUnCrawled 提取N条未爬取的链接
-func GetNUnCrawled(n int) ([]string, error) {
-	sqlString := `SELECT url FROM page WHERE craw_done = 0 LIMIT ?`
+func GetNUnCrawled(TableSuffix string, n int) ([]string, error) {
+	sqlString := fmt.Sprintf("SELECT url FROM page_%s WHERE craw_done = 0 LIMIT ?", TableSuffix)
 	rows, err := database.DB.Query(sqlString, n)
 	if err != nil {
 		return nil, err
