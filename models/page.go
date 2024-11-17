@@ -28,6 +28,12 @@ type Page struct {
 	CreatedAt   time.Time // 插入时间
 }
 
+type PageDic struct {
+	ID   uint
+	Url  string
+	Text string
+}
+
 // PageDynamic 定义动态表名
 //type PageDynamic struct {
 //	Page        // 嵌套 Page
@@ -211,4 +217,28 @@ func GetNUnCrawled(TableSuffix string, n int) ([]string, error) {
 	}
 
 	return urls, nil
+}
+
+// GetNUnDicDone 提取N条已经爬取但是没有分词的数据
+func GetNUnDicDone(TableSuffix string, n int) ([]PageDic, error) {
+	sqlString := fmt.Sprintf("SELECT id, url, text FROM page_%s WHERE craw_done = 1 AND dic_done = 0 LIMIT ?", TableSuffix)
+	rows, err := database.DB.Query(sqlString, n)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(rows)
+	var pageDics []PageDic
+	for rows.Next() {
+		var pageDic PageDic
+		if err := rows.Scan(&pageDic.ID, &pageDic.Url, &pageDic.Text); err != nil {
+			return nil, err
+		}
+		pageDics = append(pageDics, pageDic)
+	}
+	return pageDics, nil
 }

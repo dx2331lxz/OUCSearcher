@@ -53,17 +53,19 @@ func migrate() {
 	if err != nil {
 		log.Fatal("failed to connect database:", err)
 	}
-	// 创建 256 张表
-	for i := 0; i < 256; i++ {
-		tableName := fmt.Sprintf("page_%02x", i)
-		// 自动迁移
-		err = db.Table(tableName).AutoMigrate(&models.Page{})
-		if err != nil {
-			log.Fatal("failed to migrate database:", err)
-		} else {
-			log.Printf("Database %s migrated successfully!\n", tableName)
-		}
-	}
+	//// 创建 256 张表
+	//for i := 0; i < 256; i++ {
+	//	tableName := fmt.Sprintf("page_%02x", i)
+	//	// 自动迁移
+	//	err = db.Table(tableName).AutoMigrate(&models.Page{})
+	//	if err != nil {
+	//		log.Fatal("failed to migrate database:", err)
+	//	} else {
+	//		log.Printf("Database %s migrated successfully!\n", tableName)
+	//	}
+	//}
+	//	 自动迁移index表
+	err = db.AutoMigrate(&models.Index{})
 }
 
 // Fetch downloads the webpage and returns its HTML content
@@ -240,7 +242,7 @@ func crawl() {
 }
 
 // 定时启动crawl
-func startCrawl() {
+func CrawlTimer() {
 	c := cron.New(cron.WithSeconds())
 	// 每个10s执行一次
 	c.AddFunc("*/10 * * * * *", crawl)
@@ -261,26 +263,18 @@ func main() {
 	// 设置日志格式，记录文件名和行号
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-	// 启动redis从mysql获取urls
-	models.GetUrlsFromMysqlTimer()
-
 	// 迁移数据库
 	//migrate()
 
-	// 设置启动url
-	//startURL := "https://www.ouc.edu.cn/"
-	//var wg sync.WaitGroup
-	//wg.Add(1)
-	//go func() {
-	//	err := worker(startURL, &wg)
-	//	if err != nil {
-	//		log.Println("Error fetching:", startURL, err)
-	//	}
-	//}()
-	//wg.Wait()
+	// 启动redis从mysql获取urls
+	models.GetUrlsFromMysqlTimer()
+	// 启动定时任务，生成倒排索引并且将结果添加到redis中
+	tools.GenerateInvertedIndexAndAddToRedisTimer()
+	// 启动定时任务，将倒排索引存入mysql
+	tools.SaveInvertedIndexStringToMysqlTimer()
 
 	// 开始爬取，定时爬取，每隔一段时间爬取一次
-	startCrawl()
+	CrawlTimer()
 	select {}
 	database.Close()
 	database.CloseRedis()
