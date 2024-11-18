@@ -312,10 +312,9 @@ func GenerateInvertedIndexAndAddToRedisTimer() {
 	// 使用协程执行定时任务
 	c := cron.New(cron.WithSeconds())
 	// 每个10s执行一次
-	c.AddFunc("*/10 * * * * *", func() {
+	c.AddFunc("*/120 * * * * *", func() {
 		generateInvertedIndexAndAddToRedis()
 	})
-	generateInvertedIndexAndAddToRedis()
 	c.Start()
 }
 
@@ -330,11 +329,6 @@ func SaveInvertedIndexStringToMysqlTimer() {
 			log.Println("Error saving inverted index to MySQL:", err)
 		}
 	})
-	// 启动定时任务之前，立即执行一次任务
-	err := saveInvertedIndexStringToMysql()
-	if err != nil {
-		log.Println("Error saving inverted index to MySQL:", err)
-	}
 
 	c.Start()
 }
@@ -347,7 +341,7 @@ func generateInvertedIndexAndAddToRedis() {
 		// 获取TableSuffix
 		tableSuffix := fmt.Sprintf("%02x", i)
 		// 获取未分词的数据
-		pageDics, err := models.GetNUnDicDone(tableSuffix, 100)
+		pageDics, err := models.GetNUnDicDone(tableSuffix, 10)
 		if err != nil {
 			log.Println("Error getting pageDics from mysql:", err)
 			continue

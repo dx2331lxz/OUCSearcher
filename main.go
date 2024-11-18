@@ -267,17 +267,17 @@ func main() {
 	//migrate()
 
 	// 启动redis从mysql获取urls
-	//models.GetUrlsFromMysqlTimer()
+	models.GetUrlsFromMysqlTimer()
 
 	// 启动定时任务，生成倒排索引并且将结果添加到redis中
-	//tools.GenerateInvertedIndexAndAddToRedisTimer()
+	tools.GenerateInvertedIndexAndAddToRedisTimer()
 
 	// 启动定时任务，将倒排索引存入mysql
 	// todo 处理没有数据情况
 	tools.SaveInvertedIndexStringToMysqlTimer()
 
 	// 开始爬取，定时爬取，每隔一段时间爬取一次
-	//CrawlTimer()
+	CrawlTimer()
 	select {}
 	database.Close()
 	database.CloseRedis()

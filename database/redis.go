@@ -15,7 +15,7 @@ func InitializeRedis(cfg *config.Config) {
 		Addr:       cfg.RedisHost + ":" + cfg.RedisPort,
 		Password:   cfg.RedisPassword,
 		DB:         0,
-		PoolSize:   1000,
+		PoolSize:   10000,
 		MaxRetries: 3,
 	})
 	// 测试 Redis 连接
