@@ -117,7 +117,7 @@ func RenderHTML(n *html.Node) string {
 // worker 用于下载网页并提取链接
 func worker(url string, wg *sync.WaitGroup) error {
 	defer wg.Done()
-	fmt.Println("Fetching:", url)
+	//fmt.Println("Fetching:", url)
 	doc, err := Fetch(url)
 	if err != nil {
 		log.Println("Error fetching:", url, err)
@@ -271,7 +271,8 @@ func main() {
 	// 启动定时任务，生成倒排索引并且将结果添加到redis中
 	tools.GenerateInvertedIndexAndAddToRedisTimer()
 	// 启动定时任务，将倒排索引存入mysql
-	tools.SaveInvertedIndexStringToMysqlTimer()
+	// todo 处理没有数据情况
+	//tools.SaveInvertedIndexStringToMysqlTimer()
 
 	// 开始爬取，定时爬取，每隔一段时间爬取一次
 	CrawlTimer()
