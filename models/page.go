@@ -29,7 +29,7 @@ type Page struct {
 }
 
 type PageDic struct {
-	ID   uint
+	ID   int
 	Url  string
 	Text string
 }
@@ -244,7 +244,7 @@ func GetNUnDicDone(TableSuffix string, n int) ([]PageDic, error) {
 }
 
 // UpdateDicDone 更新已经分词
-func UpdateDicDone(TableSuffix string, id uint) (sql.Result, error) {
+func UpdateDicDone(TableSuffix string, id int) (sql.Result, error) {
 	sqlString := fmt.Sprintf("UPDATE page_%s SET dic_done = 1 WHERE id = ?", TableSuffix)
 	result, err := database.DB.Exec(sqlString, id)
 	if err != nil {

@@ -12,9 +12,11 @@ var RDB *redis.Client
 
 func InitializeRedis(cfg *config.Config) {
 	RDB = redis.NewClient(&redis.Options{
-		Addr:     cfg.RedisHost + ":" + cfg.RedisPort,
-		Password: cfg.RedisPassword,
-		DB:       0,
+		Addr:       cfg.RedisHost + ":" + cfg.RedisPort,
+		Password:   cfg.RedisPassword,
+		DB:         0,
+		PoolSize:   1000,
+		MaxRetries: 3,
 	})
 	// 测试 Redis 连接
 	pong, err := RDB.Ping(context.Background()).Result()
