@@ -283,7 +283,7 @@ var stopWords = map[string]struct{}{
 	"“": {}, "”": {}, "‘": {}, "’": {}, "（": {}, "）": {}, "《": {}, "》": {},
 	"--": {}, "……": {}, "-": {}, "～": {}, "·": {}, "•": {}, "｜": {}, "「": {},
 	"」": {}, "『": {}, "』": {}, "【": {}, "】": {}, "［": {}, "］": {}, "＜": {},
-	"＞": {}, "〈": {}, "〉": {},
+	"＞": {}, "〈": {}, "〉": {}, "%": {}, "(": {}, ")": {}, "&": {}, "+": {}, "/": {},
 }
 
 // 全局单例
@@ -315,6 +315,7 @@ func GenerateInvertedIndexAndAddToRedisTimer() {
 	c.AddFunc("*/10 * * * * *", func() {
 		generateInvertedIndexAndAddToRedis()
 	})
+	generateInvertedIndexAndAddToRedis()
 	c.Start()
 }
 
@@ -323,12 +324,18 @@ func SaveInvertedIndexStringToMysqlTimer() {
 	// 使用协程执行定时任务
 	c := cron.New(cron.WithSeconds())
 	// 每个10s执行一次
-	c.AddFunc("*/120 * * * * *", func() {
+	c.AddFunc("*/10 * * * * *", func() {
 		err := saveInvertedIndexStringToMysql()
 		if err != nil {
 			log.Println("Error saving inverted index to MySQL:", err)
 		}
 	})
+	// 启动定时任务之前，立即执行一次任务
+	err := saveInvertedIndexStringToMysql()
+	if err != nil {
+		log.Println("Error saving inverted index to MySQL:", err)
+	}
+
 	c.Start()
 }
 
@@ -340,7 +347,7 @@ func generateInvertedIndexAndAddToRedis() {
 		// 获取TableSuffix
 		tableSuffix := fmt.Sprintf("%02x", i)
 		// 获取未分词的数据
-		pageDics, err := models.GetNUnDicDone(tableSuffix, 1)
+		pageDics, err := models.GetNUnDicDone(tableSuffix, 100)
 		if err != nil {
 			log.Println("Error getting pageDics from mysql:", err)
 			continue
@@ -356,7 +363,8 @@ func generateInvertedIndexAndAddToRedis() {
 				wordCount := countWords(words)
 				// 过滤停用词
 				wordCount = filterStopWords(wordCount)
-				fmt.Println(wordCount)
+				//fmt.Println(wordCount)
+				log.Println(wordCount)
 				// 生成倒排索引
 				for word, count := range wordCount {
 					err := addToRedis(word, tableSuffix, Dic.ID, count, len(Dic.Text))
@@ -455,6 +463,10 @@ func getIntegrateInvertedIndexString(n int) map[string]string {
 	go func() {
 		for partIndex := range channel {
 			for key, value := range partIndex {
+				if _, ok := indexStrings[key]; !ok {
+					indexStrings[key] = value
+					continue
+				}
 				indexStrings[key] += "-" + value
 			}
 		}
@@ -480,6 +492,11 @@ func getIntegrateInvertedIndexString(n int) map[string]string {
 // 使用mysql事务将倒排索引字符串存入数据库
 func saveInvertedIndexStringToMysql() error {
 	indexStrings := getIntegrateInvertedIndexString(100)
+	fmt.Println(indexStrings)
+	// 查看indexStrings是否为空
+	if len(indexStrings) == 0 {
+		return nil
+	}
 	err := models.SaveMapToDB(indexStrings)
 	if err != nil {
 		return fmt.Errorf("Error saving inverted index to MySQL: %v", err)

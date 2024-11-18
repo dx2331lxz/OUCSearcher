@@ -9,7 +9,7 @@ import (
 type Index struct {
 	ID          uint   `gorm:"primaryKey"`
 	Name        string `gorm:"default:null"`
-	IndexString string `gorm:"default:null"`
+	IndexString string `gorm:"type:text;default:null"` // 使用 TEXT 类型
 }
 
 func (Index) TableName() string {
@@ -35,9 +35,9 @@ func SaveMapToDB(data map[string]string) error {
 	}()
 
 	// 准备插入或更新的 SQL 语句
-	sqlSelect := "SELECT index_string FROM index WHERE name = ?"
-	sqlUpdate := "UPDATE index SET index_string = ? WHERE name = ?"
-	sqlInsert := "INSERT INTO index (name, index_string) VALUES (?, ?)"
+	sqlSelect := "SELECT index_string FROM `index` WHERE name = ?"
+	sqlUpdate := "UPDATE `index` SET index_string = ? WHERE name = ?"
+	sqlInsert := "INSERT INTO `index` (name, index_string) VALUES (?, ?)"
 
 	// 批量插入或更新
 	for name, indexStr := range data {
