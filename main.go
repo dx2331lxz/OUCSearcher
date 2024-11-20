@@ -4,8 +4,11 @@ import (
 	"OUCSearcher/config"
 	"OUCSearcher/database"
 	"OUCSearcher/models"
+	_ "OUCSearcher/routers" // 引入路由
 	"OUCSearcher/tools"
 	"fmt"
+	"github.com/beego/beego/v2/core/logs"
+	beego "github.com/beego/beego/v2/server/web"
 	"github.com/robfig/cron/v3"
 	"golang.org/x/net/html"
 	"gorm.io/driver/mysql"
@@ -262,23 +265,36 @@ func main() {
 	log.SetOutput(file)
 	// 设置日志格式，记录文件名和行号
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	serviceLogFile := "log/" + time.Now().Format("2006-01-02") + ".log"
+	logs.SetLogger(logs.AdapterFile, `{
+        "filename": "`+serviceLogFile+`",
+        "daily": false,
+        "maxlines": 1000,
+        "maxsize": 0,
+        "level": 7, 
+        "perm": "0660"
+    }`)
+	logs.Info(serviceLogFile)
+	logs.SetLogFuncCallDepth(3)
+	logs.SetLogFuncCall(true) // 记录文件名和行号
 
 	// 迁移数据库
 	//migrate()
 
 	// 启动redis从mysql获取urls
-	models.GetUrlsFromMysqlTimer()
+	//models.GetUrlsFromMysqlTimer()
+
+	// 开始爬取，定时爬取，每隔一段时间爬取一次
+	//CrawlTimer()
 
 	// 启动定时任务，生成倒排索引并且将结果添加到redis中
-	tools.GenerateInvertedIndexAndAddToRedisTimer()
+	//tools.GenerateInvertedIndexAndAddToRedisTimer()
 
 	// 启动定时任务，将倒排索引存入mysql
 	// todo 处理没有数据情况
-	tools.SaveInvertedIndexStringToMysqlTimer()
+	//tools.SaveInvertedIndexStringToMysqlTimer()
 
-	// 开始爬取，定时爬取，每隔一段时间爬取一次
-	CrawlTimer()
-	select {}
+	beego.Run()
 	database.Close()
 	database.CloseRedis()
 }

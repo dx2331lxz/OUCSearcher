@@ -486,7 +486,6 @@ func getIntegrateInvertedIndexString(n int) map[string]string {
 // 使用mysql事务将倒排索引字符串存入数据库
 func saveInvertedIndexStringToMysql() error {
 	indexStrings := getIntegrateInvertedIndexString(100)
-	fmt.Println(indexStrings)
 	// 查看indexStrings是否为空
 	if len(indexStrings) == 0 {
 		return nil
