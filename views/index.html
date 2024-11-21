@@ -18,16 +18,19 @@
             height: 100vh;
             margin: 0;
         }
+
         .search-container {
             max-width: 600px;
             width: 100%;
             text-align: center;
         }
+
         .search-box {
             display: flex;
             align-items: center;
             margin-top: 20px;
         }
+
         .search-box input {
             flex: 1;
             padding: 10px;
@@ -35,6 +38,7 @@
             border: 1px solid #ced4da;
             border-radius: 30px;
         }
+
         footer {
             position: absolute;
             bottom: 10px;
@@ -55,9 +59,9 @@
 </footer>
 
 <script>
-    $(document).ready(function() {
+    $(document).ready(function () {
         // 监听回车键
-        $("#searchInput").on("keypress", function(e) {
+        $("#searchInput").on("keypress", function (e) {
             if (e.which === 13) { // Enter key
                 const query = $("#searchInput").val().trim();
                 if (query) {

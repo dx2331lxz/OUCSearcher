@@ -35,3 +35,4 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o oucsearch
 1. 频率控制--使用redis
 2. 页面上添加面试题
 3. 爬虫超时重试
+4. 自动切换内网搜索

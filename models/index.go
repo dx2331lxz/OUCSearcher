@@ -8,7 +8,7 @@ import (
 
 type Index struct {
 	ID          uint   `gorm:"primaryKey"`
-	Name        string `gorm:"default:null"`
+	Name        string `gorm:"default:null;uniqueIndex:idx_unique_name"`
 	IndexString string `gorm:"type:text;default:null"` // 使用 TEXT 类型
 }
 
@@ -66,4 +66,15 @@ func SaveMapToDB(data map[string]string) error {
 	}
 
 	return nil
+}
+
+// GetIndexString 通过 name 获取 index_string
+func GetIndexString(name string) (string, error) {
+	sqlString := "SELECT index_string FROM `index` WHERE name = ?"
+	var indexString string
+	err := database.DB.QueryRow(sqlString, name).Scan(&indexString)
+	if err != nil {
+		return "", fmt.Errorf("failed to query index_string: %v", err)
+	}
+	return indexString, nil
 }

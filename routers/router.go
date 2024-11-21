@@ -7,4 +7,5 @@ import (
 
 func init() {
 	beego.Router("/", &controllers.IndexController{})
+	beego.Router("/search", &controllers.SearchController{})
 }

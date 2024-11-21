@@ -2,10 +2,13 @@ package models
 
 import (
 	"OUCSearcher/database"
+	"OUCSearcher/types"
 	"crypto/md5"
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -29,9 +32,9 @@ type Page struct {
 }
 
 type PageDic struct {
-	ID   int
-	Url  string
-	Text string
+	ID   int    `json:"id"`
+	Url  string `json:"url"`
+	Text string `json:"text"`
 }
 
 // PageDynamic 定义动态表名
@@ -251,4 +254,95 @@ func UpdateDicDone(TableSuffix string, id int) (sql.Result, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+// GetDicDoneAboutCount 获取已经分词的页面总数（估算）
+func GetDicDoneAboutCount() (int, error) {
+	sqlString := "SELECT COUNT(*) FROM page_0f WHERE dic_done = 1"
+	rows, err := database.DB.Query(sqlString)
+	if err != nil {
+		return 0, err
+	}
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(rows)
+	var count int
+	for rows.Next() {
+		if err := rows.Scan(&count); err != nil {
+			return 0, err
+		}
+	}
+	return count * 256, nil
+}
+
+//	type Pair struct {
+//		Key   string
+//		Value float64
+//	}
+//
+// 通过事务循环[]pair，从数据库中提取信息存储进[]PageDic中
+
+func GetPageDicFromPair(data []types.Pair) ([]PageDic, error) {
+	var pageDics []PageDic
+
+	// 开启事务
+	tx, err := database.DB.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to start transaction: %v", err)
+	}
+	// 确保事务在退出时正确提交或回滚
+	defer func() {
+		if p := recover(); p != nil {
+			tx.Rollback() // 遇到 panic 回滚
+			panic(p)      // 继续传播 panic
+		} else if err != nil {
+			tx.Rollback() // 遇到错误回滚
+		} else {
+			err = tx.Commit() // 成功则提交事务
+		}
+	}()
+
+	// 循环处理
+	for _, pair := range data {
+		var pageDic PageDic
+
+		// 分割 key 获取表后缀和 ID
+		pageInfo := strings.Split(pair.Key, ",")
+		if len(pageInfo) != 2 {
+			return nil, fmt.Errorf("invalid key format: %s", pair.Key)
+		}
+
+		tableSuffix := pageInfo[0]
+		id, convErr := strconv.Atoi(pageInfo[1])
+		if convErr != nil {
+			return nil, fmt.Errorf("failed to convert string to int: %v", convErr)
+		}
+
+		// 准备查询语句
+		sqlSelect := fmt.Sprintf("SELECT id, url, text FROM page_%s WHERE id = ?", tableSuffix)
+		stmt, prepErr := tx.Prepare(sqlSelect)
+		if prepErr != nil {
+			return nil, fmt.Errorf("failed to prepare statement: %v", prepErr)
+		}
+		defer stmt.Close()
+
+		// 执行查询
+		scanErr := stmt.QueryRow(id).Scan(&pageDic.ID, &pageDic.Url, &pageDic.Text)
+		if scanErr != nil {
+			if scanErr == sql.ErrNoRows {
+				// 如果没有找到记录，可以选择跳过或记录日志
+				log.Printf("No record found for table: %s, id: %d", tableSuffix, id)
+				continue
+			}
+			return nil, fmt.Errorf("failed to query for record: %v", scanErr)
+		}
+
+		// 添加到结果列表
+		pageDics = append(pageDics, pageDic)
+	}
+
+	return pageDics, nil
 }
