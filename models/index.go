@@ -2,6 +2,7 @@ package models
 
 import (
 	"OUCSearcher/database"
+	"crypto/md5"
 	"database/sql"
 	"fmt"
 )
@@ -16,7 +17,28 @@ func (Index) TableName() string {
 	return "index"
 }
 
-// 使用事务批量存储数据
+func GetIndexTableName(name string) (string, error) {
+	// 计算 MD5 哈希值
+	hash := md5.New()
+	_, err := hash.Write([]byte(name))
+	if err != nil {
+		return "", fmt.Errorf("failed to write data to hash: %v", err)
+	}
+
+	// 获取哈希值的最后一位（字节）
+	hashValue := hash.Sum(nil)
+
+	// 提取最后一个字节
+	lastByte := hashValue[len(hashValue)-1]
+
+	// 将最后一个字节转换为小写十六进制字符
+	lastHexChar := fmt.Sprintf("%02x", lastByte)
+
+	// 返回分表名称，格式为 index_<lastHexChar>
+	return fmt.Sprintf("index_%s", lastHexChar), nil
+}
+
+// SaveMapToDB 使用事务批量存储数据
 // SaveMapToDB 使用事务批量将 map[string]string 的数据存储到 MySQL
 func SaveMapToDB(data map[string]string) error {
 	// 开启事务
@@ -34,16 +56,20 @@ func SaveMapToDB(data map[string]string) error {
 		}
 	}()
 
-	// 准备插入或更新的 SQL 语句
-	sqlSelect := "SELECT index_string FROM `index` WHERE name = ?"
-	sqlUpdate := "UPDATE `index` SET index_string = ? WHERE name = ?"
-	sqlInsert := "INSERT INTO `index` (name, index_string) VALUES (?, ?)"
-
 	// 批量插入或更新
 	for name, indexStr := range data {
+		// 获取表名
+		tableName, err := GetIndexTableName(name)
+		if err != nil {
+			return fmt.Errorf("failed to get table name: %v", err)
+		}
+		sqlSelect := fmt.Sprintf("SELECT index_string FROM %s WHERE name = ?", tableName)
+		sqlUpdate := fmt.Sprintf("UPDATE %s SET index_string = ? WHERE name = ?", tableName)
+		sqlInsert := fmt.Sprintf("INSERT INTO %s (name, index_string) VALUES (?, ?)", tableName)
+
 		// 查询 name 是否已存在
 		var existingIndexString string
-		err := tx.QueryRow(sqlSelect, name).Scan(&existingIndexString)
+		err = tx.QueryRow(sqlSelect, name).Scan(&existingIndexString)
 
 		if err != nil && err != sql.ErrNoRows {
 			return fmt.Errorf("failed to query for existing record: %v", err)
@@ -70,9 +96,15 @@ func SaveMapToDB(data map[string]string) error {
 
 // GetIndexString 通过 name 获取 index_string
 func GetIndexString(name string) (string, error) {
-	sqlString := "SELECT index_string FROM `index` WHERE name = ?"
+	// 获取表名
+	tableName, err := GetIndexTableName(name)
+	if err != nil {
+		return "", fmt.Errorf("failed to get table name: %v", err)
+	}
+
+	sqlString := fmt.Sprintf("SELECT index_string FROM %s WHERE name = ?", tableName)
 	var indexString string
-	err := database.DB.QueryRow(sqlString, name).Scan(&indexString)
+	err = database.DB.QueryRow(sqlString, name).Scan(&indexString)
 	if err != nil {
 		return "", fmt.Errorf("failed to query index_string: %v", err)
 	}

@@ -56,19 +56,28 @@ func migrate() {
 	if err != nil {
 		log.Fatal("failed to connect database:", err)
 	}
-	//// 创建 256 张表
+	// 创建 256 张表
+	for i := 0; i < 256; i++ {
+		tableName := fmt.Sprintf("page_%02x", i)
+		// 自动迁移
+		err = db.Table(tableName).AutoMigrate(&models.Page{})
+		if err != nil {
+			log.Fatal("failed to migrate database:", err)
+		} else {
+			log.Printf("Database %s migrated successfully!\n", tableName)
+		}
+	}
+
 	//for i := 0; i < 256; i++ {
-	//	tableName := fmt.Sprintf("page_%02x", i)
+	//	tableName := fmt.Sprintf("index_%02x", i)
 	//	// 自动迁移
-	//	err = db.Table(tableName).AutoMigrate(&models.Page{})
+	//	err = db.Table(tableName).AutoMigrate(&models.Index{})
 	//	if err != nil {
 	//		log.Fatal("failed to migrate database:", err)
 	//	} else {
 	//		log.Printf("Database %s migrated successfully!\n", tableName)
 	//	}
 	//}
-	//	 自动迁移index表
-	err = db.AutoMigrate(&models.Index{})
 }
 
 // Fetch downloads the webpage and returns its HTML content
@@ -158,22 +167,6 @@ func worker(url string, wg *sync.WaitGroup) error {
 	if err != nil {
 		return err
 	}
-
-	//rowsAffected, err := res.RowsAffected()
-	//
-	//if err != nil {
-	//	log.Println("Error getting rows affected:", url, err)
-	//	return err
-	//}
-	//if rowsAffected == 0 {
-	//	log.Println("No rows affected:", url)
-	//	return fmt.Errorf("no rows affected")
-	//} else if rowsAffected > 1 {
-	//	log.Println("Multiple rows affected:", url)
-	//	return fmt.Errorf("有重复的行")
-	//} else {
-	//	log.Println("One row affected:", url)
-	//}
 
 	// 提取链接
 	//fmt.Println(pId)

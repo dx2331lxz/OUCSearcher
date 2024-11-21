@@ -13,28 +13,35 @@ import (
 )
 
 type Page struct {
-	ID          uint      `gorm:"primaryKey"`                              // primary key
-	Url         string    `gorm:"default:null;uniqueIndex:idx_unique_url"` // 网页链接
-	Host        string    `gorm:"default:null"`                            // 域名
-	CrawDone    int       `gorm:"type:tinyint(1);default:0"`               // 已爬
-	DicDone     int       `gorm:"type:tinyint(1);default:0"`               // 已拆分进词典
-	CrawTime    time.Time `gorm:"default:'2001-01-01 00:00:01'"`           // 爬取时刻
-	OriginTitle string    `gorm:"default:''"`                              // 上级页面超链接文字
-	ReferrerId  uint      `gorm:"default:0"`                               // 上级页面ID
-	Scheme      string    `gorm:"default:null"`                            // http/https
-	Domain1     string    `gorm:"default:null"`                            // 一级域名后缀
-	Domain2     string    `gorm:"default:null"`                            // 二级域名后缀
-	Path        string    `gorm:"default:null"`                            // URL 路径
-	Query       string    `gorm:"default:null"`                            // URL 查询参数
-	Title       string    `gorm:"default:null"`                            // 页面标题
-	Text        string    `gorm:"type:LONGTEXT;default:null"`              // 页面文字
-	CreatedAt   time.Time // 插入时间
+	ID           uint      `gorm:"primaryKey"`                              // primary key
+	Url          string    `gorm:"default:null;uniqueIndex:idx_unique_url"` // 网页链接
+	Host         string    `gorm:"default:null"`                            // 域名
+	CrawDone     int       `gorm:"type:tinyint(1);default:0"`               // 已爬
+	DicDone      int       `gorm:"type:tinyint(1);default:0"`               // 已拆分进词典
+	CrawTime     time.Time `gorm:"default:'2001-01-01 00:00:01'"`           // 爬取时刻
+	OriginTitle  string    `gorm:"default:''"`                              // 上级页面超链接文字
+	ReferrerId   uint      `gorm:"default:0"`                               // 上级页面ID
+	ReferrerPage string    `gorm:"default:'01,1'"`                          // 上级页面URL
+	Scheme       string    `gorm:"default:null"`                            // http/https
+	Domain1      string    `gorm:"default:null"`                            // 一级域名后缀
+	Domain2      string    `gorm:"default:null"`                            // 二级域名后缀
+	Path         string    `gorm:"default:null"`                            // URL 路径
+	Query        string    `gorm:"default:null"`                            // URL 查询参数
+	Title        string    `gorm:"default:null"`                            // 页面标题
+	Text         string    `gorm:"type:LONGTEXT;default:null"`              // 页面文字
+	CreatedAt    time.Time // 插入时间
 }
 
 type PageDic struct {
 	ID   int    `json:"id"`
 	Url  string `json:"url"`
 	Text string `json:"text"`
+}
+
+type SearchResult struct {
+	Title       string // 搜索结果标题
+	URL         string // 搜索结果链接
+	Description string // 搜索结果描述
 }
 
 // PageDynamic 定义动态表名
@@ -78,7 +85,9 @@ func GetTableName(url string) (string, error) {
 
 // GetByUrl 通过url获取pages
 //func (p *Page) GetByUrl(url string) ([]Page, error) {
-//	sqlString := "SELECT * FROM page WHERE url = ?"
+//	// 获取表名
+//	tableName, err := GetTableName(url)
+//	sqlString := fmt.Sprintf("SELECT id FROM %s WHERE url = ?", tableName)
 //	rows, err := database.DB.Query(sqlString, url)
 //	if err != nil {
 //		log.Println("Error getting page by url:", url, err)
@@ -278,15 +287,9 @@ func GetDicDoneAboutCount() (int, error) {
 	return count * 256, nil
 }
 
-//	type Pair struct {
-//		Key   string
-//		Value float64
-//	}
-//
-// 通过事务循环[]pair，从数据库中提取信息存储进[]PageDic中
-
-func GetPageDicFromPair(data []types.Pair) ([]PageDic, error) {
-	var pageDics []PageDic
+// GetPageDicFromPair 通过事务循环[]pair，从数据库中提取信息存储进[]PageDic中
+func GetSearchResultFromPair(data []types.Pair) ([]SearchResult, error) {
+	var searchResultList []SearchResult
 
 	// 开启事务
 	tx, err := database.DB.Begin()
@@ -307,7 +310,7 @@ func GetPageDicFromPair(data []types.Pair) ([]PageDic, error) {
 
 	// 循环处理
 	for _, pair := range data {
-		var pageDic PageDic
+		var searchRes SearchResult
 
 		// 分割 key 获取表后缀和 ID
 		pageInfo := strings.Split(pair.Key, ",")
@@ -322,7 +325,7 @@ func GetPageDicFromPair(data []types.Pair) ([]PageDic, error) {
 		}
 
 		// 准备查询语句
-		sqlSelect := fmt.Sprintf("SELECT id, url, text FROM page_%s WHERE id = ?", tableSuffix)
+		sqlSelect := fmt.Sprintf("SELECT url, title, text FROM page_%s WHERE id = ?", tableSuffix)
 		stmt, prepErr := tx.Prepare(sqlSelect)
 		if prepErr != nil {
 			return nil, fmt.Errorf("failed to prepare statement: %v", prepErr)
@@ -330,7 +333,7 @@ func GetPageDicFromPair(data []types.Pair) ([]PageDic, error) {
 		defer stmt.Close()
 
 		// 执行查询
-		scanErr := stmt.QueryRow(id).Scan(&pageDic.ID, &pageDic.Url, &pageDic.Text)
+		scanErr := stmt.QueryRow(id).Scan(&searchRes.URL, &searchRes.Title, &searchRes.Description)
 		if scanErr != nil {
 			if scanErr == sql.ErrNoRows {
 				// 如果没有找到记录，可以选择跳过或记录日志
@@ -341,8 +344,8 @@ func GetPageDicFromPair(data []types.Pair) ([]PageDic, error) {
 		}
 
 		// 添加到结果列表
-		pageDics = append(pageDics, pageDic)
+		searchResultList = append(searchResultList, searchRes)
 	}
 
-	return pageDics, nil
+	return searchResultList, nil
 }

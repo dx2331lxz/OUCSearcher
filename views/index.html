@@ -65,10 +65,7 @@
             if (e.which === 13) { // Enter key
                 const query = $("#searchInput").val().trim();
                 if (query) {
-                    // 替换为真实的搜索逻辑或跳转
-                    alert(`Searching for: ${query}`);
-                } else {
-                    alert("Please enter a search query.");
+                    window.location.href = "/search?q=" + query;
                 }
             }
         });
