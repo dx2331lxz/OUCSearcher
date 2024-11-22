@@ -2,8 +2,10 @@
 1.	从mysql获取urls：
 	将 MySQL 中存储的待爬取 URL 拉取到 Redis的名称为urls的列表中： Redis 的 LPUSH 或 RPUSH 将 URL 插入 Redis 列表，供爬虫消费。
     同时将url加入到all_urls这个set中，防止爬取时重复添加url到mysql中
-2.	爬取： GetUrlFromRedis
-3. 
+2.	爬取：
+	GetUrlFromRedis：从redis中取出url
+	IsUrlVisited：判断是否已经爬取过如果没有则进行爬取
+5. 
 
 
 ## 创建数据库
