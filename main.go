@@ -220,11 +220,40 @@ func crawl() {
 	wg.Wait()
 }
 
-// 定时启动crawl
+// CrawlTimer 定时启动crawl
 func CrawlTimer() {
 	c := cron.New(cron.WithSeconds())
 	// 每个10s执行一次
 	c.AddFunc("*/10 * * * * *", crawl)
+	c.Start()
+}
+
+// 定时更新page的爬取状态
+func updateCrawDoneTimer() {
+	c := cron.New(cron.WithSeconds())
+	// 每天执行一次
+	c.AddFunc("0 0 0 * * *", func() {
+		err := models.DeleteAllVisitedUrls()
+		if err != nil {
+			log.Println("Error deleting all visited urls:", err)
+			return
+		}
+		err = models.SetCrawDoneToZero()
+		if err != nil {
+			log.Println("Error setting craw_done to zero:", err)
+			return
+		}
+	})
+	err := models.DeleteAllVisitedUrls()
+	if err != nil {
+		log.Println("Error deleting all visited urls:", err)
+		return
+	}
+	err = models.SetCrawDoneToZero()
+	if err != nil {
+		log.Println("Error setting craw_done to zero:", err)
+		return
+	}
 	c.Start()
 }
 
@@ -267,8 +296,9 @@ func main() {
 	tools.GenerateInvertedIndexAndAddToRedisTimer()
 
 	// 启动定时任务，将倒排索引存入mysql
-	// todo 处理没有数据情况
 	tools.SaveInvertedIndexStringToMysqlTimer()
+	// 启动定时任务，更新爬取状态
+	updateCrawDoneTimer()
 
 	beego.Run()
 	database.Close()

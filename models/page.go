@@ -350,4 +350,17 @@ func GetSearchResultFromPair(data []types.Pair) ([]SearchResult, error) {
 	return searchResultList, nil
 }
 
-// 将表中
+// 将表中爬取时间与当前时间相差超过一天的数据的爬取状态设置为0
+func SetCrawDoneToZero() error {
+	// 获取表名
+	for i := 0; i < 256; i++ {
+		tableName := fmt.Sprintf("page_%02x", i)
+		sqlString := fmt.Sprintf("UPDATE %s SET craw_done = 0 WHERE DATEDIFF(NOW(), craw_time) > 1", tableName)
+		_, err := database.DB.Exec(sqlString)
+		if err != nil {
+			log.Println("Error setting craw_done to 0:", err)
+			return err
+		}
+	}
+	return nil
+}

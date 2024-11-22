@@ -143,7 +143,7 @@ func AddUrlToAllUrlSet(url string) error {
 	return nil
 }
 
-// 判断是否在all_urls中
+// IsUrlInAllUrls 判断是否在all_urls中
 func IsUrlInAllUrls(url string) (bool, error) {
 	// 计算 URL 哈希值
 	h := fnv.New32a()
@@ -154,4 +154,13 @@ func IsUrlInAllUrls(url string) (bool, error) {
 	}
 	hashedUrl := fmt.Sprintf("%d", h.Sum32()) // 将哈希值转换为字符串形式
 	return database.RDB.SIsMember(context.Background(), "all_urls", hashedUrl).Result()
+}
+
+// DeleteAllVisitedUrls 删除visited_urls中的所有
+func DeleteAllVisitedUrls() error {
+	_, err := database.RDB.Del(context.Background(), "visited_urls").Result()
+	if err != nil {
+		return fmt.Errorf("failed to delete visited_urls: %v", err)
+	}
+	return nil
 }
