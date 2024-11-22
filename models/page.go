@@ -349,3 +349,5 @@ func GetSearchResultFromPair(data []types.Pair) ([]SearchResult, error) {
 
 	return searchResultList, nil
 }
+
+// 将表中

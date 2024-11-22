@@ -11,8 +11,8 @@ import (
 	beego "github.com/beego/beego/v2/server/web"
 	"github.com/robfig/cron/v3"
 	"golang.org/x/net/html"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
+	//"gorm.io/driver/mysql"
+	//"gorm.io/gorm"
 	"io"
 	"log"
 	"net/http"
@@ -29,44 +29,27 @@ func init() {
 	cfg := config.NewConfig()
 	database.Initialize(cfg)
 	database.InitializeRedis(cfg)
+}
 
+// 数据库迁移
+func migrate() {
 	// 迁移数据库
 	// 打开数据库连接
 	//db, err := gorm.Open(mysql.Open(cfg.DSN()), &gorm.Config{})
 	//if err != nil {
 	//	log.Fatal("failed to connect database:", err)
 	//}
-	//
-	//// 自动迁移
-	//err = db.AutoMigrate(&models.Page{})
-	//if err != nil {
-	//	log.Fatal("failed to migrate database:", err)
-	//}
-	//
-	//log.Println("Database migrated successfully!")
-}
-
-// 数据库迁移
-func migrate() {
-	cfg := config.NewConfig()
-	database.Initialize(cfg)
-	// 迁移数据库
-	// 打开数据库连接
-	db, err := gorm.Open(mysql.Open(cfg.DSN()), &gorm.Config{})
-	if err != nil {
-		log.Fatal("failed to connect database:", err)
-	}
 	// 创建 256 张表
-	for i := 0; i < 256; i++ {
-		tableName := fmt.Sprintf("page_%02x", i)
-		// 自动迁移
-		err = db.Table(tableName).AutoMigrate(&models.Page{})
-		if err != nil {
-			log.Fatal("failed to migrate database:", err)
-		} else {
-			log.Printf("Database %s migrated successfully!\n", tableName)
-		}
-	}
+	//for i := 0; i < 256; i++ {
+	//	tableName := fmt.Sprintf("page_%02x", i)
+	//	// 自动迁移
+	//	err = db.Table(tableName).AutoMigrate(&models.Page{})
+	//	if err != nil {
+	//		log.Fatal("failed to migrate database:", err)
+	//	} else {
+	//		log.Printf("Database %s migrated successfully!\n", tableName)
+	//	}
+	//}
 
 	//for i := 0; i < 256; i++ {
 	//	tableName := fmt.Sprintf("index_%02x", i)

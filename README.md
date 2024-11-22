@@ -37,3 +37,5 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o oucsearch
 3. 爬虫超时重试
 4. 自动切换内网搜索
 5. pagerank算法
+6. seo优化
+7. 循环爬取

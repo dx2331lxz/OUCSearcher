@@ -1,3 +1,4 @@
+// Package tools Description: 提取 HTML 文档中的文本、链接和标题，对文档内容进行处理
 package tools
 
 import (
@@ -38,7 +39,6 @@ func StringStrip(input string) string {
 	result = strings.Join(strings.FieldsFunc(result, func(r rune) bool {
 		return r == '-'
 	}), "-")
-
 	return result
 }
 
@@ -63,24 +63,62 @@ func ExtractTitle(doc *html.Node) string {
 }
 
 // ExtractText 从 HTML 文档中提取所有文本
+//
+//	func ExtractText(doc *html.Node) string {
+//		var b strings.Builder
+//		var f func(*html.Node)
+//		f = func(n *html.Node) {
+//			// 跳过 <script> 标签及其内容
+//			if n.Type == html.ElementNode && (n.Data == "script" || n.Data == "style") {
+//				return
+//			}
+//
+//			if n.Type == html.TextNode {
+//				b.WriteString(n.Data)
+//				b.WriteString(" ")
+//			}
+//			for c := n.FirstChild; c != nil; c = c.NextSibling {
+//				f(c)
+//			}
+//		}
+//		f(doc)
+//		s := removeBase64Images(b.String())
+//		s = StringStrip(s)
+//		return s
+//	}
 func ExtractText(doc *html.Node) string {
 	var b strings.Builder
 	var f func(*html.Node)
 	f = func(n *html.Node) {
-		// 跳过 <script> 标签及其内容
+		// 跳过 <script> 和 <style> 标签及其内容
 		if n.Type == html.ElementNode && (n.Data == "script" || n.Data == "style") {
 			return
 		}
 
+		// 跳过 <div> 中 class 或 id 包含 "header" 的内容
+		if n.Type == html.ElementNode && n.Data == "div" {
+			for _, attr := range n.Attr {
+				if (attr.Key == "class" || attr.Key == "id") && strings.Contains(attr.Val, "header") {
+					return
+				}
+			}
+		}
+
+		// 提取文本节点内容
 		if n.Type == html.TextNode {
 			b.WriteString(n.Data)
 			b.WriteString(" ")
 		}
+
+		// 遍历子节点
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			f(c)
 		}
 	}
+
 	f(doc)
+
+	// 处理提取的字符串，移除多余内容
 	s := removeBase64Images(b.String())
 	s = StringStrip(s)
 	return s
