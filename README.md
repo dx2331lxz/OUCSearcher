@@ -1,12 +1,9 @@
 ## 爬取逻辑
-1.	MySQL -> Redis：
-•	将 MySQL 中存储的待爬取 URL 拉取到 Redis 中（通过定时任务或实时同步）。
-•	通过 Redis 的 LPUSH 或 RPUSH 将 URL 插入 Redis 列表，供爬虫消费。
-2.	Redis -> 爬虫：
-•	爬虫从 Redis 列表中通过 BRPOP 或 RPOP 取出 URL，进行并发爬取。
-•	爬虫可以通过多进程、多线程并发消费 Redis 列表。
-3.	缓存结果到 Redis：
-•	爬取结果可以存储到 Redis 中（例如使用 SET 存储 HTML 内容），并设置过期时间，避免占用过多内存。
+1.	从mysql获取urls：
+	将 MySQL 中存储的待爬取 URL 拉取到 Redis的名称为urls的列表中： Redis 的 LPUSH 或 RPUSH 将 URL 插入 Redis 列表，供爬虫消费。
+    同时将url加入到all_urls这个set中，防止爬取时重复添加url到mysql中
+2.	爬取： GetUrlFromRedis
+3. 
 
 
 ## 创建数据库

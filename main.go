@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-const NumberOfCrawl = 1000
+const NumberOfCrawl = 10000
 
 // init 初始化数据库连接
 func init() {
