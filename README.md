@@ -1,9 +1,20 @@
+# OUCSearcher 海底捞
+## 项目简介
+本项目为针对高校中国海洋大学的自建搜索引擎，README.md文档待完善
 ## 爬取逻辑
+### 爬取
 1.	从mysql获取urls：
 	将 MySQL 中存储的待爬取 URL 拉取到 Redis的名称为urls的列表中： Redis 的 LPUSH 或 RPUSH 将 URL 插入 Redis 列表，供爬虫消费。
     同时将url加入到all_urls这个set中，防止爬取时重复添加url到mysql中
-2.	爬取： GetUrlFromRedis
-3. 
+2.	爬取：
+	GetUrlFromRedis：从redis中取出url
+	IsUrlVisited：判断是否已经爬取过如果没有则进行爬取
+	解析url以及对应爬取的页面，存入数据库，对于页面中出现的url，如果不在redis的名为all_urls的set表中则添加到mysql中，并且添加到set表，如果在set表中则跳过
+### 倒排索引
+1. 	生成倒排索引，将倒排索引添加到redis中
+2. 	定期从redis中随机取出一部分使用事务追加到mysql的对应词的位置
+### SEO
+使用BM25算法对搜索词和文章进行相关性排序
 
 
 ## 创建数据库
