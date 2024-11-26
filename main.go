@@ -11,8 +11,8 @@ import (
 	beego "github.com/beego/beego/v2/server/web"
 	"github.com/robfig/cron/v3"
 	"golang.org/x/net/html"
-	//"gorm.io/driver/mysql"
-	//"gorm.io/gorm"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"io"
 	"log"
 	"net/http"
@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-const NumberOfCrawl = 10000
+const NumberOfCrawl = 2000
 
 // init 初始化数据库连接
 func init() {
@@ -35,10 +35,11 @@ func init() {
 func migrate() {
 	// 迁移数据库
 	// 打开数据库连接
-	//db, err := gorm.Open(mysql.Open(cfg.DSN()), &gorm.Config{})
-	//if err != nil {
-	//	log.Fatal("failed to connect database:", err)
-	//}
+	cfg := config.NewConfig()
+	db, err := gorm.Open(mysql.Open(cfg.DSN()), &gorm.Config{})
+	if err != nil {
+		log.Fatal("failed to connect database:", err)
+	}
 	// 创建 256 张表
 	//for i := 0; i < 256; i++ {
 	//	tableName := fmt.Sprintf("page_%02x", i)
@@ -50,6 +51,7 @@ func migrate() {
 	//		log.Printf("Database %s migrated successfully!\n", tableName)
 	//	}
 	//}
+	db.AutoMigrate(&models.Index{})
 
 	//for i := 0; i < 256; i++ {
 	//	tableName := fmt.Sprintf("index_%02x", i)
@@ -176,7 +178,7 @@ func worker(url string, wg *sync.WaitGroup) error {
 			}
 
 		} else {
-			log.Println("URL already in all urls:", link)
+			//log.Println("URL already in all urls:", link)
 		}
 	}
 
@@ -207,7 +209,7 @@ func crawl() {
 				return
 			}
 			if isVisited {
-				log.Println("URL has been visited, skipping...")
+				//log.Println("URL has been visited, skipping...")
 				return
 			}
 
@@ -244,16 +246,20 @@ func updateCrawDoneTimer() {
 			return
 		}
 	})
-	err := models.DeleteAllVisitedUrls()
-	if err != nil {
-		log.Println("Error deleting all visited urls:", err)
-		return
-	}
-	err = models.SetCrawDoneToZero()
-	if err != nil {
-		log.Println("Error setting craw_done to zero:", err)
-		return
-	}
+	c.Start()
+}
+
+// 更新页面的分词状态SetDicDoneToZero
+func updateDicDoneTimer() {
+	c := cron.New(cron.WithSeconds())
+	// 每天执行一次
+	c.AddFunc("0 0 0 * * *", func() {
+		err := models.SetDicDoneToZero()
+		if err != nil {
+			log.Println("Error setting dic_done to zero:", err)
+			return
+		}
+	})
 	c.Start()
 }
 
@@ -297,8 +303,12 @@ func main() {
 
 	// 启动定时任务，将倒排索引存入mysql
 	tools.SaveInvertedIndexStringToMysqlTimer()
-	// 启动定时任务，更新爬取状态
+	//启动定时任务，更新爬取状态
 	updateCrawDoneTimer()
+	// 启动定时任务，更新分词状态
+	updateDicDoneTimer()
+	// 启动定时任务，将索引迁移到索引表
+	tools.Index2IndexsTimer()
 
 	beego.Run()
 	database.Close()

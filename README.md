@@ -25,6 +25,8 @@ func (Page) TableName() string {
 visited_urls用来防止之前添加到待爬取list中的url没有被爬取，又被添加到待爬取list中，从而进行重复爬取
 all_urls用来防止重复添加和数据库中url重复的url到待爬取list中，确保数据库中存储的url唯一
 
+## 更新分词库
+
 ## 交叉编译linux运行
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o oucsearch
 

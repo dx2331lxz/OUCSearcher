@@ -222,6 +222,9 @@ func GetSortedPageList(q string, k int) []types.Pair {
 	}
 	// 所有页面个数
 	n := len(pageScoreMap)
+	if n <= k {
+		return sortMapByValue(pageScoreMap)
+	}
 	// 如果 k 远小于 n，使用最小堆
 	if isKFarLessThanN(k, n) {
 		fmt.Println("使用最小堆")

@@ -350,7 +350,7 @@ func GetSearchResultFromPair(data []types.Pair) ([]SearchResult, error) {
 	return searchResultList, nil
 }
 
-// 将表中爬取时间与当前时间相差超过一天的数据的爬取状态设置为0
+// SetCrawDoneToZero 将表中爬取时间与当前时间相差超过一天的数据的爬取状态设置为0
 func SetCrawDoneToZero() error {
 	// 获取表名
 	for i := 0; i < 256; i++ {
@@ -363,4 +363,65 @@ func SetCrawDoneToZero() error {
 		}
 	}
 	return nil
+}
+
+// SetDicDoneToZero 将表中所有数据的分词状态设置为0
+func SetDicDoneToZero() error {
+	// 获取表名
+	for i := 0; i < 256; i++ {
+		tableName := fmt.Sprintf("page_%02x", i)
+		sqlString := fmt.Sprintf("UPDATE %s SET dic_done = 0", tableName)
+		_, err := database.DB.Exec(sqlString)
+		if err != nil {
+			log.Println("Error setting dic_done to 0:", err)
+			return err
+		}
+	}
+	return nil
+}
+
+// 已经分词的页面总数占已经爬取的页面总数的百分比
+func GetDicDonePercent() (float64, error) {
+	dicDoneCountSum := 0
+	countSum := 0
+	for i := 0; i < 256; i++ {
+		tableName := fmt.Sprintf("page_%02x", i)
+		sqlString := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE dic_done = 1", tableName)
+		rows, err := database.DB.Query(sqlString)
+		if err != nil {
+			return 0, err
+		}
+		defer func(rows *sql.Rows) {
+			err := rows.Close()
+			if err != nil {
+				fmt.Println(err)
+			}
+		}(rows)
+		var dicDoneCount int
+		for rows.Next() {
+			if err := rows.Scan(&dicDoneCount); err != nil {
+				return 0, err
+			}
+		}
+		dicDoneCountSum += dicDoneCount
+		sqlString = fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)
+		rows, err = database.DB.Query(sqlString)
+		if err != nil {
+			return 0, err
+		}
+		defer func(rows *sql.Rows) {
+			err := rows.Close()
+			if err != nil {
+				fmt.Println(err)
+			}
+		}(rows)
+		var count int
+		for rows.Next() {
+			if err := rows.Scan(&count); err != nil {
+				return 0, err
+			}
+		}
+		countSum += count
+	}
+	return float64(dicDoneCountSum) / float64(countSum), nil
 }

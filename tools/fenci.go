@@ -219,6 +219,7 @@ func getIntegrateInvertedIndexString(n int) map[string]string {
 
 // 使用mysql事务将倒排索引字符串存入数据库
 func saveInvertedIndexStringToMysql() error {
+	//获取一百个词的倒排索引
 	indexStrings := getIntegrateInvertedIndexString(100)
 	// 查看indexStrings是否为空
 	if len(indexStrings) == 0 {
