@@ -254,7 +254,7 @@ func updateDicDoneTimer() {
 	c := cron.New(cron.WithSeconds())
 	// 每天执行一次
 	c.AddFunc("0 0 0 * * *", func() {
-		// 如果redis中的列表数量小于100则更新
+		// 如果redis中的列表数量小于1000则更新
 		listKeysCount, err := models.GetListKeysCount()
 		if err != nil {
 			log.Println("Error getting list keys count:", err)
