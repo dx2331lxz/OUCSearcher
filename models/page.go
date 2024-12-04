@@ -380,7 +380,7 @@ func SetDicDoneToZero() error {
 	return nil
 }
 
-// 已经分词的页面总数占已经爬取的页面总数的百分比
+// GetDicDonePercent 已经分词的页面总数占已经爬取的页面总数的百分比
 func GetDicDonePercent() (float64, error) {
 	dicDoneCountSum := 0
 	countSum := 0

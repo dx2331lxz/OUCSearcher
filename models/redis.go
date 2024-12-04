@@ -164,3 +164,91 @@ func DeleteAllVisitedUrls() error {
 	}
 	return nil
 }
+
+// GetListKeysCount 获取所有类型为 list 的键的数量
+func GetListKeysCount() (int64, error) {
+	var cursor uint64
+	ctx := context.Background()
+	var listKeysCount int64
+
+	// 使用 SCAN 命令遍历所有键
+	for {
+		// SCAN 命令返回游标和匹配的键
+		keys, newCursor, err := database.RDB.Scan(ctx, cursor, "*", 0).Result()
+		if err != nil {
+			return 0, err
+		}
+
+		// 更新游标
+		cursor = newCursor
+
+		// 遍历返回的键
+		for _, key := range keys {
+			// 获取键的类型
+			keyType, err := database.RDB.Type(ctx, key).Result()
+			if err != nil {
+				return 0, err
+			}
+
+			// 如果键的类型是 list，则计数
+			if keyType == "list" {
+				listKeysCount++
+			}
+		}
+
+		// 如果游标为 0，表示扫描完成
+		if cursor == 0 {
+			break
+		}
+	}
+
+	return listKeysCount, nil
+}
+
+// DeleteListKeysExcludingUrls 删除所有类型为 list 且键名不为 urls 的键
+func DeleteListKeysExcludingUrls() error {
+	ctx := context.Background()
+	var cursor uint64
+
+	// 使用 SCAN 命令遍历所有的键
+	for {
+		// SCAN 命令返回游标和匹配的键
+		keys, newCursor, err := database.RDB.Scan(ctx, cursor, "*", 0).Result()
+		if err != nil {
+			return err
+		}
+
+		// 更新游标
+		cursor = newCursor
+
+		// 遍历所有键
+		for _, key := range keys {
+			// 排除键名为 "urls" 的键
+			if key == "urls" {
+				continue
+			}
+
+			// 获取键的类型
+			keyType, err := database.RDB.Type(ctx, key).Result()
+			if err != nil {
+				return err
+			}
+
+			// 如果键的类型是 list，则删除该键
+			if keyType == "list" {
+				_, err := database.RDB.Del(ctx, key).Result()
+				if err != nil {
+					return err
+				}
+				fmt.Printf("Deleted key: %s\n", key)
+			}
+		}
+
+		// 如果游标为 0，表示扫描完成
+		if cursor == 0 {
+			break
+		}
+	}
+
+	return nil
+}

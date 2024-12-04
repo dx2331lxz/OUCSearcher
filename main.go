@@ -254,10 +254,24 @@ func updateDicDoneTimer() {
 	c := cron.New(cron.WithSeconds())
 	// 每天执行一次
 	c.AddFunc("0 0 0 * * *", func() {
-		err := models.SetDicDoneToZero()
+		// 如果redis中的列表数量小于100则更新
+		listKeysCount, err := models.GetListKeysCount()
 		if err != nil {
-			log.Println("Error setting dic_done to zero:", err)
+			log.Println("Error getting list keys count:", err)
 			return
+		}
+		if listKeysCount < 1000 {
+			err := models.SetDicDoneToZero()
+			if err != nil {
+				log.Println("Error setting dic_done to zero:", err)
+				return
+			}
+			//	清空redis中的列表
+			err = models.DeleteListKeysExcludingUrls()
+			if err != nil {
+				log.Println("Error deleting list keys excluding urls:", err)
+				return
+			}
 		}
 	})
 	c.Start()
