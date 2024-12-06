@@ -1,9 +1,10 @@
 // Package models 用于切换index数据库，使用数据库表存储当前使用的index
-// index_table_status表只允许一条记录，id为1，current_table为当前使用的表名
+// index_table_status表只允许量条记录
 package models
 
 import (
 	"OUCSearcher/database"
+	"log"
 )
 
 type IndexTableStatus struct {
@@ -18,29 +19,31 @@ func (IndexTableStatus) TableName() string {
 // IndexList 常量list存储index类型
 var IndexList = []string{"index", "index1"}
 
-func GetCurrentIndexTable() (string, error) {
+func GetCurrentIndexTable(id int) (string, error) {
 	var status string
-	sqlString := "SELECT current_table FROM index_table_status WHERE id = 1"
-	err := database.DB.QueryRow(sqlString).Scan(&status)
+	sqlString := "SELECT current_table FROM index_table_status WHERE id = ?"
+	err := database.DB.QueryRow(sqlString, id).Scan(&status)
 	if err != nil {
 		return "", err
 	}
 	return status, nil
 }
 
+// SwitchIndexTable 将表中id为1和2的current_table字段值互换
 func SwitchIndexTable() error {
-	currentTable, err := GetCurrentIndexTable()
+
+	//UPDATE index_table_status
+	//SET current_table = CASE
+	//WHEN id = 1 THEN (SELECT current_table FROM index_table_status WHERE id = 2)
+	//WHEN id = 2 THEN (SELECT current_table FROM index_table_status WHERE id = 1)
+	//ELSE current_table
+	//END
+	//WHERE id IN (1, 2);
+	sqlString := "UPDATE index_table_status SET current_table = CASE WHEN id = 1 THEN (SELECT current_table FROM index_table_status WHERE id = 2) WHEN id = 2 THEN (SELECT current_table FROM index_table_status WHERE id = 1) ELSE current_table END WHERE id IN (1, 2)"
+	_, err := database.DB.Exec(sqlString)
 	if err != nil {
-		return err
+		log.Println("Error switching index table:", err)
 	}
-	nextTable := IndexList[0]
-	if currentTable == IndexList[0] {
-		nextTable = IndexList[1]
-	}
-	sqlString := "UPDATE index_table_status SET current_table = ? WHERE id = 1"
-	_, err = database.DB.Exec(sqlString, nextTable)
-	if err != nil {
-		return err
-	}
-	return nil
+	log.Println("Switched index table successfully!")
+	return err
 }

@@ -20,7 +20,7 @@ func (Index) TableName() string {
 
 var currentIndexTable = ""
 
-func GetIndexTableName(name string) (string, error) {
+func GetIndexTableName(name string, num int) (string, error) {
 	// 计算 MD5 哈希值
 	hash := md5.New()
 	_, err := hash.Write([]byte(name))
@@ -41,7 +41,7 @@ func GetIndexTableName(name string) (string, error) {
 	// 保证优先使用currentIndexTable变量
 	if currentIndexTable == "" {
 		var err error
-		currentIndexTable, err = GetCurrentIndexTable()
+		currentIndexTable, err = GetCurrentIndexTable(num)
 		if err != nil {
 			return fmt.Sprintf("index_%s", lastHexChar), fmt.Errorf("failed to get current index table: %v", err)
 		}
@@ -71,7 +71,7 @@ func SaveMapToDB(data map[string]string) error {
 	// 批量插入或更新
 	for name, indexStr := range data {
 		// 获取表名
-		tableName, err := GetIndexTableName(name)
+		tableName, err := GetIndexTableName(name, 1)
 		if err != nil {
 			log.Println("failed to get table name:", err)
 		}
@@ -109,7 +109,7 @@ func SaveMapToDB(data map[string]string) error {
 // GetIndexString 通过 name 获取 index_string
 func GetIndexString(name string) (string, error) {
 	// 获取表名
-	tableName, err := GetIndexTableName(name)
+	tableName, err := GetIndexTableName(name, 2)
 	if err != nil {
 		return "", fmt.Errorf("failed to get table name: %v", err)
 	}

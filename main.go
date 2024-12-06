@@ -51,7 +51,7 @@ func migrate() {
 	//		log.Printf("Database %s migrated successfully!\n", tableName)
 	//	}
 	//}
-	db.AutoMigrate(&models.IndexTableStatus{})
+	//db.AutoMigrate(&models.IndexTableStatus{})
 
 	//for i := 0; i < 256; i++ {
 	//	tableName := fmt.Sprintf("index1_%02x", i)
@@ -306,7 +306,7 @@ func main() {
 	logs.SetLogFuncCall(true) // 记录文件名和行号
 
 	// 迁移数据库
-	migrate()
+	//migrate()
 
 	//// 启动redis从mysql获取urls
 	models.GetUrlsFromMysqlTimer()
@@ -322,7 +322,7 @@ func main() {
 	////启动定时任务，更新爬取状态
 	//updateCrawDoneTimer()
 	//// 启动定时任务，更新分词状态
-	//updateDicDoneTimer()
+	updateDicDoneTimer()
 	// 启动定时任务，将索引迁移到索引表
 	//tools.Index2IndexsTimer()
 
