@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"database/sql"
 	"fmt"
+	"log"
 )
 
 type Index struct {
@@ -16,6 +17,8 @@ type Index struct {
 func (Index) TableName() string {
 	return "index"
 }
+
+var currentIndexTable = ""
 
 func GetIndexTableName(name string) (string, error) {
 	// 计算 MD5 哈希值
@@ -35,7 +38,16 @@ func GetIndexTableName(name string) (string, error) {
 	lastHexChar := fmt.Sprintf("%02x", lastByte)
 
 	// 返回分表名称，格式为 index_<lastHexChar>
-	return fmt.Sprintf("index_%s", lastHexChar), nil
+	// 保证优先使用currentIndexTable变量
+	if currentIndexTable == "" {
+		var err error
+		currentIndexTable, err = GetCurrentIndexTable()
+		if err != nil {
+			return fmt.Sprintf("index_%s", lastHexChar), fmt.Errorf("failed to get current index table: %v", err)
+		}
+	}
+
+	return fmt.Sprintf("%s_%s", currentIndexTable, lastHexChar), nil
 }
 
 // SaveMapToDB 使用事务批量存储数据
@@ -55,11 +67,17 @@ func SaveMapToDB(data map[string]string) error {
 			err = tx.Commit() // 如果没有错误，提交事务
 		}
 	}()
-	sqlSelect := "SELECT index_string FROM `index` WHERE name = ?"
-	sqlUpdate := "UPDATE `index` SET index_string = ? WHERE name = ?"
-	sqlInsert := "INSERT INTO `index` (name, index_string) VALUES (?, ?)"
+
 	// 批量插入或更新
 	for name, indexStr := range data {
+		// 获取表名
+		tableName, err := GetIndexTableName(name)
+		if err != nil {
+			log.Println("failed to get table name:", err)
+		}
+		sqlSelect := "SELECT index_string FROM " + tableName + " WHERE name = ?"
+		sqlUpdate := "UPDATE " + tableName + " SET index_string = ? WHERE name = ?"
+		sqlInsert := "INSERT INTO " + tableName + " (name, index_string) VALUES (?, ?)"
 
 		// 查询 name 是否已存在
 		var existingIndexString string

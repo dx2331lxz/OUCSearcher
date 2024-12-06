@@ -180,7 +180,7 @@ func (p *Page) Update() (sql.Result, error) {
 	if rowsAffected == 0 {
 		log.Println("No rows updated for URL:", p.Url)
 	} else {
-		//fmt.Println(sqlString, p.Url)
+		// fmt.Println(sqlString, p.Url)
 		log.Printf("Successfully updated page: %s", p.Url)
 	}
 

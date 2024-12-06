@@ -12,6 +12,7 @@ import (
 
 // Index2IndexsTimer 定时执行Index2Indexs
 func Index2IndexsTimer() {
+
 	c := cron.New(cron.WithSeconds())
 	// 半天执行一次
 	c.AddFunc("0 0 0,12 * * *", func() {
@@ -28,6 +29,8 @@ func Index2IndexsTimer() {
 			}
 		}
 	})
+	Index2Indexs()
+
 	c.Start()
 }
 
@@ -38,6 +41,7 @@ func Index2Indexs() error {
 	if err != nil {
 		return err
 	}
+
 	defer rows.Close()
 	for rows.Next() {
 		var name, indexString string
@@ -45,12 +49,7 @@ func Index2Indexs() error {
 		if err != nil {
 			return err
 		}
-		// 插入到新表中
-		err = InsertOrUpdateIndex(name, indexString)
 		fmt.Println("Migrating index:", name)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -89,11 +88,13 @@ func InsertOrUpdateIndex(name string, indexString string) error {
 	if err == sql.ErrNoRows {
 		// 如果没有找到记录，则插入新的记录
 		_, err = tx.Exec(sqlInsert, name, indexString)
+		fmt.Println("Inserting index:", name)
 	} else if err != nil {
 		return err
 	} else {
 		// 如果记录已经存在，则更新 index_string
-		_, err = tx.Exec(sqlUpdate, indexString, name)
+		_, err = tx.Exec(sqlUpdate, existingIndexString+"-"+indexString, name)
+		fmt.Println("Updating index:", name)
 	}
 	return err
 }
