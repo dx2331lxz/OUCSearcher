@@ -135,9 +135,9 @@ func AddUrlToAllUrlSet(url string) error {
 		return fmt.Errorf("failed to add hashed URL to Redis set: %v", err)
 	}
 	if result == 1 {
-		log.Printf("Added hashed URL to set: %s (original URL: %s)", hashedUrl, url)
+		//log.Printf("Added hashed URL to set: %s (original URL: %s)", hashedUrl, url)
 	} else {
-		log.Printf("URL already in all urls: %s", url)
+		//log.Printf("URL already in all urls: %s", url)
 	}
 
 	return nil

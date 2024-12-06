@@ -137,6 +137,8 @@ func worker(url string, wg *sync.WaitGroup) error {
 	// 解析文本
 	//fmt.Println(tools.ExtractText(doc))
 	page.Text = tools.ExtractText(doc)
+	// 在正文后面添加标题，便于搜索标题
+	page.Text = page.Text + " " + page.Title + " " + page.Title
 	// CrawTime    time.Time `gorm:"default:'2001-01-01 00:00:01'"`
 	page.CrawTime = time.Now()
 	page.CrawDone = 1

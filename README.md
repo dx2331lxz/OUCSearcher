@@ -58,3 +58,5 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o oucsearch
 5. pagerank算法
 6. seo优化
 7. 循环爬取
+8. 使用Embedding进行优化，使用向量数据库
+9. 修改index方案，改为两个数据库轮换使用
