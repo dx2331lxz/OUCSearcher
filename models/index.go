@@ -103,7 +103,7 @@ func SaveMapToDB(data map[string]string) error {
 			}
 		}
 	}
-
+	log.Println("Successfully saved inverted index to MySQL!")
 	return nil
 }
 
