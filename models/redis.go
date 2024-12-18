@@ -209,6 +209,7 @@ func GetListKeysCount() (int64, error) {
 func DeleteListKeysExcludingUrls() error {
 	ctx := context.Background()
 	var cursor uint64
+	var wg sync.WaitGroup
 
 	// 使用 SCAN 命令遍历所有的键
 	for {
@@ -227,21 +228,25 @@ func DeleteListKeysExcludingUrls() error {
 			if key == "urls" {
 				continue
 			}
+			go func() {
+				wg.Add(1)
+				defer wg.Done()
 
-			// 获取键的类型
-			keyType, err := database.RDB.Type(ctx, key).Result()
-			if err != nil {
-				return err
-			}
-
-			// 如果键的类型是 list，则删除该键
-			if keyType == "list" {
-				_, err := database.RDB.Del(ctx, key).Result()
+				// 获取键的类型
+				keyType, err := database.RDB.Type(ctx, key).Result()
 				if err != nil {
-					return err
+					return
 				}
-				fmt.Printf("Deleted key: %s\n", key)
-			}
+
+				// 如果键的类型是 list，则删除该键
+				if keyType == "list" {
+					_, err := database.RDB.Del(ctx, key).Result()
+					if err != nil {
+						return
+					}
+					fmt.Printf("Deleted key: %s\n", key)
+				}
+			}()
 		}
 
 		// 如果游标为 0，表示扫描完成
@@ -249,6 +254,7 @@ func DeleteListKeysExcludingUrls() error {
 			break
 		}
 	}
-
+	wg.Wait()
+	fmt.Println("All list keys excluding 'urls' have been deleted")
 	return nil
 }

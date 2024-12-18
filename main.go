@@ -250,8 +250,45 @@ func updateCrawDoneTimer() {
 	c.Start()
 }
 
+func updateDicDone(cronJob *tools.CronJob) {
+	// 停止GenerateInvertedIndexAndAddToRedisTimer定时器
+	cronJob.StopTask("GenerateInvertedIndexAndAddToRedis")
+	fmt.Println("停止GenerateInvertedIndexAndAddToRedis定时器")
+	// 停止SaveInvertedIndexStringToMysql定时器
+	cronJob.StopTask("SaveInvertedIndexStringToMysql")
+	fmt.Println("停止SaveInvertedIndexStringToMysql定时器")
+	// 转换分词表
+	err := models.SwitchIndexTable()
+	if err != nil {
+		log.Println("Error switching index table:", err)
+		return
+	}
+	fmt.Println("转换分词表")
+
+	err = models.SetDicDoneToZero()
+	if err != nil {
+		log.Println("Error setting dic_done to zero:", err)
+		return
+	}
+	fmt.Println("设置dic_done为0")
+	// 清空redis中的列表
+	err = models.DeleteListKeysExcludingUrls()
+	if err != nil {
+		log.Println("Error deleting list keys excluding urls:", err)
+		return
+	}
+	fmt.Println("清空redis中的列表")
+	// 置空分词表
+	err = models.ClearIndexString()
+	if err != nil {
+		log.Println("Error clearing index string:", err)
+		return
+	}
+	fmt.Println("置空分词表")
+}
+
 // 更新页面的分词状态SetDicDoneToZero
-func updateDicDoneTimer() {
+func updateDicDoneTimer(cronJob *tools.CronJob) {
 	c := cron.New(cron.WithSeconds())
 	// 每天执行一次
 	c.AddFunc("0 0 0 * * *", func() {
@@ -262,19 +299,10 @@ func updateDicDoneTimer() {
 			return
 		}
 		if listKeysCount < 1000 {
-			err := models.SetDicDoneToZero()
-			if err != nil {
-				log.Println("Error setting dic_done to zero:", err)
-				return
-			}
-			//	清空redis中的列表
-			err = models.DeleteListKeysExcludingUrls()
-			if err != nil {
-				log.Println("Error deleting list keys excluding urls:", err)
-				return
-			}
+			updateDicDone(cronJob)
 		}
 	})
+
 	c.Start()
 }
 
@@ -304,30 +332,34 @@ func main() {
 	logs.SetLogFuncCallDepth(3)
 	logs.SetLogFuncCall(true) // 记录文件名和行号
 
+	// 创建定时器
+	cronJob := tools.NewCronJob()
+
 	// 迁移数据库
 	//migrate()
 
-	////// 启动redis从mysql获取urls
-	//models.GetUrlsFromMysqlTimer()
-	////
-	////// 开始爬取，定时爬取，每隔一段时间爬取一次
-	//CrawlTimer()
-	//
-	//// 启动定时任务，生成倒排索引并且将结果添加到redis中
-	//tools.GenerateInvertedIndexAndAddToRedisTimer()
-	//
-	////// 启动定时任务，将倒排索引存入mysql
-	//tools.SaveInvertedIndexStringToMysqlTimer()
-	//
-	//////启动定时任务，更新爬取状态
-	//updateCrawDoneTimer()
-	////// 启动定时任务，更新分词状态
-	//updateDicDoneTimer()
-	//
-	//// 启动定时任务，将索引迁移到索引表
-	//tools.Index2IndexsTimer()
+	// 启动redis从mysql获取urls
+	models.GetUrlsFromMysqlTimer()
 
+	// 开始爬取，定时爬取，每隔一段时间爬取一次
+	CrawlTimer()
+
+	// 启动定时任务，生成倒排索引并且将结果添加到redis中
+	//tools.GenerateInvertedIndexAndAddToRedisTimer()
+	cronJob.StartTask("GenerateInvertedIndexAndAddToRedis")
+
+	// 启动定时任务，将倒排索引存入mysql
+	//tools.SaveInvertedIndexStringToMysqlTimer()
+	cronJob.StartTask("SaveInvertedIndexStringToMysql")
+
+	////启动定时任务，更新爬取状态
+	updateCrawDoneTimer()
+	//// 启动定时任务，更新分词状态
+	updateDicDoneTimer(cronJob)
 	beego.Run()
 	database.Close()
 	database.CloseRedis()
 }
+
+//// 启动定时任务，将索引迁移到索引表
+//tools.Index2IndexsTimer()

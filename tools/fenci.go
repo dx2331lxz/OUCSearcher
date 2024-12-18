@@ -5,7 +5,6 @@ import (
 	"OUCSearcher/models"
 	"context"
 	"fmt"
-	"github.com/robfig/cron/v3"
 	"github.com/yanyiwu/gojieba"
 	"log"
 	"sync"
@@ -41,34 +40,22 @@ func fenci(s string) []string {
 	return x.CutForSearch(s, use_hmm)
 }
 
-// GenerateInvertedIndexAndAddToRedisTimer 定时执行generateInvertedIndexAndAddToRedis
-func GenerateInvertedIndexAndAddToRedisTimer() {
-	// 使用协程执行定时任务
-	c := cron.New(cron.WithSeconds())
-	// 每个10s执行一次
-	c.AddFunc("*/120 * * * * *", func() {
-		generateInvertedIndexAndAddToRedis()
-	})
-	c.Start()
-}
-
 // SaveInvertedIndexStringToMysqlTimer 定时执行saveInvertedIndexStringToMysql
-func SaveInvertedIndexStringToMysqlTimer() {
-	// 使用协程执行定时任务
-	c := cron.New(cron.WithSeconds())
-	// 每个10s执行一次
-	c.AddFunc("*/10 * * * * *", func() {
-		err := saveInvertedIndexStringToMysql()
-		if err != nil {
-			log.Println("Error saving inverted index to MySQL:", err)
-		}
-	})
+//func SaveInvertedIndexStringToMysqlTimer() {
+//	// 使用协程执行定时任务
+//	c := cron.New(cron.WithSeconds())
+//	// 每个10s执行一次
+//	c.AddFunc("*/10 * * * * *", func() {
+//		err := saveInvertedIndexStringToMysql()
+//		if err != nil {
+//			log.Println("Error saving inverted index to MySQL:", err)
+//		}
+//	})
+//	c.Start()
+//}
 
-	c.Start()
-}
-
-// 生成倒排索引
-func generateInvertedIndexAndAddToRedis() {
+// GenerateInvertedIndexAndAddToRedis 生成倒排索引
+func GenerateInvertedIndexAndAddToRedis() error {
 	var wg sync.WaitGroup
 	// 从数据库中取出所有的数据
 	for i := 0; i < 256; i++ {
@@ -109,6 +96,7 @@ func generateInvertedIndexAndAddToRedis() {
 		}
 	}
 	wg.Wait()
+	return nil
 }
 
 // 将词信息添加到Redis
@@ -217,8 +205,8 @@ func getIntegrateInvertedIndexString(n int) map[string]string {
 	return indexStrings
 }
 
-// 使用mysql事务将倒排索引字符串存入数据库
-func saveInvertedIndexStringToMysql() error {
+// SaveInvertedIndexStringToMysql 使用mysql事务将倒排索引字符串存入数据库
+func SaveInvertedIndexStringToMysql() error {
 	//获取一百个词的倒排索引
 	indexStrings := getIntegrateInvertedIndexString(100)
 	// 查看indexStrings是否为空

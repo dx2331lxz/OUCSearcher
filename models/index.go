@@ -89,7 +89,14 @@ func SaveMapToDB(data map[string]string) error {
 			}
 		} else {
 			// 如果记录已经存在，则更新 index_string，拼接新的值
-			updatedIndexString := existingIndexString + "-" + indexStr
+			var updatedIndexString string
+
+			if existingIndexString == "" {
+				existingIndexString = indexStr
+			} else {
+				updatedIndexString = existingIndexString + "-" + indexStr
+			}
+
 			_, err = tx.Exec(sqlUpdate, updatedIndexString, name)
 			if err != nil {
 				return fmt.Errorf("failed to update record: %v", err)
@@ -100,10 +107,11 @@ func SaveMapToDB(data map[string]string) error {
 	return nil
 }
 
+// GetIndexString 目前确保在获取index数据的时候使用表2的数据
 // GetIndexString 通过 name 获取 index_string
 func GetIndexString(name string) (string, error) {
 	// 获取表名
-	tableName, err := GetIndexTableName(name, 1)
+	tableName, err := GetIndexTableName(name, 2)
 	if err != nil {
 		return "", fmt.Errorf("failed to get table name: %v", err)
 	}
@@ -115,4 +123,22 @@ func GetIndexString(name string) (string, error) {
 		return "", fmt.Errorf("failed to query index_string: %v", err)
 	}
 	return indexString, nil
+}
+
+// ClearIndexString 将当前表中的所有IndexString至为空
+func ClearIndexString() error {
+	//	 循环256个表
+	tableName, err := GetCurrentIndexTable(1)
+	for i := 0; i < 256; i++ {
+		tableName_ := fmt.Sprintf("%s_%02x", tableName, i)
+		if err != nil {
+			return fmt.Errorf("failed to get current index table: %v", err)
+		}
+		sqlString := fmt.Sprintf("UPDATE %s SET index_string = ''", tableName_)
+		_, err = database.DB.Exec(sqlString)
+		if err != nil {
+			return fmt.Errorf("failed to clear index_string: %v", err)
+		}
+	}
+	return nil
 }

@@ -31,19 +31,19 @@ func GetCurrentIndexTable(id int) (string, error) {
 
 // SwitchIndexTable 将表中id为1和2的current_table字段值互换
 func SwitchIndexTable() error {
-
-	//UPDATE index_table_status
-	//SET current_table = CASE
-	//WHEN id = 1 THEN (SELECT current_table FROM index_table_status WHERE id = 2)
-	//WHEN id = 2 THEN (SELECT current_table FROM index_table_status WHERE id = 1)
-	//ELSE current_table
-	//END
-	//WHERE id IN (1, 2);
-	sqlString := "UPDATE index_table_status SET current_table = CASE WHEN id = 1 THEN (SELECT current_table FROM index_table_status WHERE id = 2) WHEN id = 2 THEN (SELECT current_table FROM index_table_status WHERE id = 1) ELSE current_table END WHERE id IN (1, 2)"
+	sqlString := `
+		UPDATE index_table_status AS it1
+		JOIN index_table_status AS it2
+		ON it1.id = 1 AND it2.id = 2
+		SET it1.current_table = it2.current_table,
+			it2.current_table = it1.current_table
+	`
 	_, err := database.DB.Exec(sqlString)
 	if err != nil {
 		log.Println("Error switching index table:", err)
+		return err
 	}
+
 	log.Println("Switched index table successfully!")
-	return err
+	return nil
 }
