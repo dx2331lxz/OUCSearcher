@@ -8,4 +8,5 @@ import (
 func init() {
 	beego.Router("/", &controllers.IndexController{})
 	beego.Router("/search", &controllers.SearchController{})
+	beego.Router("/wx/search", &controllers.SearchController{}, "get:WxSearch")
 }

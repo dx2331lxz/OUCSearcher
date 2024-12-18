@@ -51,7 +51,7 @@ func migrate() {
 	//		log.Printf("Database %s migrated successfully!\n", tableName)
 	//	}
 	//}
-	//db.AutoMigrate(&models.IndexTableStatus{})
+	db.AutoMigrate(&models.IndexTableStatus{})
 
 	//for i := 0; i < 256; i++ {
 	//	tableName := fmt.Sprintf("index1_%02x", i)
@@ -189,7 +189,6 @@ func worker(url string, wg *sync.WaitGroup) error {
 
 // crawl 用于爬取网页
 func crawl() {
-
 	var wg sync.WaitGroup
 
 	for i := 0; i < NumberOfCrawl; i++ {
@@ -308,22 +307,24 @@ func main() {
 	// 迁移数据库
 	//migrate()
 
-	//// 启动redis从mysql获取urls
-	models.GetUrlsFromMysqlTimer()
+	////// 启动redis从mysql获取urls
+	//models.GetUrlsFromMysqlTimer()
+	////
+	////// 开始爬取，定时爬取，每隔一段时间爬取一次
+	//CrawlTimer()
 	//
-	//// 开始爬取，定时爬取，每隔一段时间爬取一次
-	CrawlTimer()
-
-	// 启动定时任务，生成倒排索引并且将结果添加到redis中
+	//// 启动定时任务，生成倒排索引并且将结果添加到redis中
 	//tools.GenerateInvertedIndexAndAddToRedisTimer()
-
-	//// 启动定时任务，将倒排索引存入mysql
+	//
+	////// 启动定时任务，将倒排索引存入mysql
 	//tools.SaveInvertedIndexStringToMysqlTimer()
-	////启动定时任务，更新爬取状态
+	//
+	//////启动定时任务，更新爬取状态
 	//updateCrawDoneTimer()
-	//// 启动定时任务，更新分词状态
-	updateDicDoneTimer()
-	// 启动定时任务，将索引迁移到索引表
+	////// 启动定时任务，更新分词状态
+	//updateDicDoneTimer()
+	//
+	//// 启动定时任务，将索引迁移到索引表
 	//tools.Index2IndexsTimer()
 
 	beego.Run()

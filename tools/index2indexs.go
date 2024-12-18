@@ -4,7 +4,6 @@ package tools
 import (
 	"OUCSearcher/database"
 	"OUCSearcher/models"
-	"database/sql"
 	"fmt"
 	"github.com/robfig/cron/v3"
 	"log"
@@ -54,47 +53,47 @@ func Index2Indexs() error {
 	return nil
 }
 
-func InsertOrUpdateIndex(name string, indexString string) error {
-	// 获取表名
-	tableName, err := models.GetIndexTableName(name)
-	if err != nil {
-		return err
-	}
-
-	// 拼接 SQL 语句
-	sqlSelect := fmt.Sprintf("SELECT index_string FROM %s WHERE name = ?", tableName)
-	sqlUpdate := fmt.Sprintf("UPDATE %s SET index_string = ? WHERE name = ?", tableName)
-	sqlInsert := fmt.Sprintf("INSERT INTO %s (name, index_string) VALUES (?, ?)", tableName)
-
-	// 开始事务
-	tx, err := database.DB.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if p := recover(); p != nil {
-			tx.Rollback()
-			panic(p) // 重新抛出 panic
-		} else if err != nil {
-			tx.Rollback() // 遇到错误回滚事务
-		} else {
-			err = tx.Commit() // 没有错误提交事务
-		}
-	}()
-
-	// 查询 name 是否已存在
-	var existingIndexString string
-	err = tx.QueryRow(sqlSelect, name).Scan(&existingIndexString)
-	if err == sql.ErrNoRows {
-		// 如果没有找到记录，则插入新的记录
-		_, err = tx.Exec(sqlInsert, name, indexString)
-		fmt.Println("Inserting index:", name)
-	} else if err != nil {
-		return err
-	} else {
-		// 如果记录已经存在，则更新 index_string
-		_, err = tx.Exec(sqlUpdate, existingIndexString+"-"+indexString, name)
-		fmt.Println("Updating index:", name)
-	}
-	return err
-}
+//func InsertOrUpdateIndex(name string, indexString string) error {
+//	// 获取表名
+//	tableName, err := models.GetIndexTableName(name)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// 拼接 SQL 语句
+//	sqlSelect := fmt.Sprintf("SELECT index_string FROM %s WHERE name = ?", tableName)
+//	sqlUpdate := fmt.Sprintf("UPDATE %s SET index_string = ? WHERE name = ?", tableName)
+//	sqlInsert := fmt.Sprintf("INSERT INTO %s (name, index_string) VALUES (?, ?)", tableName)
+//
+//	// 开始事务
+//	tx, err := database.DB.Begin()
+//	if err != nil {
+//		return err
+//	}
+//	defer func() {
+//		if p := recover(); p != nil {
+//			tx.Rollback()
+//			panic(p) // 重新抛出 panic
+//		} else if err != nil {
+//			tx.Rollback() // 遇到错误回滚事务
+//		} else {
+//			err = tx.Commit() // 没有错误提交事务
+//		}
+//	}()
+//
+//	// 查询 name 是否已存在
+//	var existingIndexString string
+//	err = tx.QueryRow(sqlSelect, name).Scan(&existingIndexString)
+//	if err == sql.ErrNoRows {
+//		// 如果没有找到记录，则插入新的记录
+//		_, err = tx.Exec(sqlInsert, name, indexString)
+//		fmt.Println("Inserting index:", name)
+//	} else if err != nil {
+//		return err
+//	} else {
+//		// 如果记录已经存在，则更新 index_string
+//		_, err = tx.Exec(sqlUpdate, existingIndexString+"-"+indexString, name)
+//		fmt.Println("Updating index:", name)
+//	}
+//	return err
+//}

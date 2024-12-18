@@ -18,8 +18,6 @@ func (Index) TableName() string {
 	return "index"
 }
 
-var currentIndexTable = ""
-
 func GetIndexTableName(name string, num int) (string, error) {
 	// 计算 MD5 哈希值
 	hash := md5.New()
@@ -38,13 +36,9 @@ func GetIndexTableName(name string, num int) (string, error) {
 	lastHexChar := fmt.Sprintf("%02x", lastByte)
 
 	// 返回分表名称，格式为 index_<lastHexChar>
-	// 保证优先使用currentIndexTable变量
-	if currentIndexTable == "" {
-		var err error
-		currentIndexTable, err = GetCurrentIndexTable(num)
-		if err != nil {
-			return fmt.Sprintf("index_%s", lastHexChar), fmt.Errorf("failed to get current index table: %v", err)
-		}
+	currentIndexTable, err := GetCurrentIndexTable(num)
+	if err != nil {
+		return "", fmt.Errorf("failed to get current index table: %v", err)
 	}
 
 	return fmt.Sprintf("%s_%s", currentIndexTable, lastHexChar), nil
@@ -109,7 +103,7 @@ func SaveMapToDB(data map[string]string) error {
 // GetIndexString 通过 name 获取 index_string
 func GetIndexString(name string) (string, error) {
 	// 获取表名
-	tableName, err := GetIndexTableName(name, 2)
+	tableName, err := GetIndexTableName(name, 1)
 	if err != nil {
 		return "", fmt.Errorf("failed to get table name: %v", err)
 	}
