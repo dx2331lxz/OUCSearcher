@@ -92,7 +92,7 @@ func SaveMapToDB(data map[string]string) error {
 			var updatedIndexString string
 
 			if existingIndexString == "" {
-				existingIndexString = indexStr
+				updatedIndexString = indexStr
 			} else {
 				updatedIndexString = existingIndexString + "-" + indexStr
 			}
