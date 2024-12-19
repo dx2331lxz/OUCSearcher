@@ -11,7 +11,7 @@ import (
 type Index struct {
 	ID          uint   `gorm:"primaryKey"`
 	Name        string `gorm:"default:null;uniqueIndex:idx_unique_name"`
-	IndexString string `gorm:"type:text;default:null"` // 使用 TEXT 类型
+	IndexString string `gorm:"type:LONGTEXT;default:null"` // 使用 TEXT 类型
 }
 
 func (Index) TableName() string {

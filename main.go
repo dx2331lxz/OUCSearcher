@@ -51,18 +51,28 @@ func migrate() {
 	//		log.Printf("Database %s migrated successfully!\n", tableName)
 	//	}
 	//}
-	db.AutoMigrate(&models.IndexTableStatus{})
+	//db.AutoMigrate(&models.IndexTableStatus{})
 
-	//for i := 0; i < 256; i++ {
-	//	tableName := fmt.Sprintf("index1_%02x", i)
-	//	// 自动迁移
-	//	err = db.Table(tableName).AutoMigrate(&models.Index{})
-	//	if err != nil {
-	//		log.Fatal("failed to migrate database:", err)
-	//	} else {
-	//		log.Printf("Database %s migrated successfully!\n", tableName)
-	//	}
-	//}
+	for i := 0; i < 256; i++ {
+		tableName := fmt.Sprintf("index1_%02x", i)
+		// 自动迁移
+		err = db.Table(tableName).AutoMigrate(&models.Index{})
+		if err != nil {
+			log.Fatal("failed to migrate database:", err)
+		} else {
+			log.Printf("Database %s migrated successfully!\n", tableName)
+		}
+	}
+	for i := 0; i < 256; i++ {
+		tableName := fmt.Sprintf("index_%02x", i)
+		// 自动迁移
+		err = db.Table(tableName).AutoMigrate(&models.Index{})
+		if err != nil {
+			log.Fatal("failed to migrate database:", err)
+		} else {
+			log.Printf("Database %s migrated successfully!\n", tableName)
+		}
+	}
 }
 
 // Fetch downloads the webpage and returns its HTML content
@@ -76,7 +86,9 @@ func Fetch(url string) (*html.Node, error) {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36 OUCSpider/1.0")
 
 	// 使用 http.Client 发送请求
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -333,29 +345,30 @@ func main() {
 	logs.SetLogFuncCall(true) // 记录文件名和行号
 
 	// 创建定时器
-	cronJob := tools.NewCronJob()
+	//cronJob := tools.NewCronJob()
 
 	// 迁移数据库
 	//migrate()
 
-	// 启动redis从mysql获取urls
-	models.GetUrlsFromMysqlTimer()
+	//// 启动redis从mysql获取urls
+	//models.GetUrlsFromMysqlTimer()
+	//
+	//// 开始爬取，定时爬取，每隔一段时间爬取一次
+	//CrawlTimer()
+	//
+	//// 启动定时任务，生成倒排索引并且将结果添加到redis中
+	////tools.GenerateInvertedIndexAndAddToRedisTimer()
+	//cronJob.StartTask("GenerateInvertedIndexAndAddToRedis")
+	//
+	//// 启动定时任务，将倒排索引存入mysql
+	////tools.SaveInvertedIndexStringToMysqlTimer()
+	//cronJob.StartTask("SaveInvertedIndexStringToMysql")
+	//
+	//////启动定时任务，更新爬取状态
+	//updateCrawDoneTimer()
+	////// 启动定时任务，更新分词状态
+	//updateDicDoneTimer(cronJob)
 
-	// 开始爬取，定时爬取，每隔一段时间爬取一次
-	CrawlTimer()
-
-	// 启动定时任务，生成倒排索引并且将结果添加到redis中
-	//tools.GenerateInvertedIndexAndAddToRedisTimer()
-	cronJob.StartTask("GenerateInvertedIndexAndAddToRedis")
-
-	// 启动定时任务，将倒排索引存入mysql
-	//tools.SaveInvertedIndexStringToMysqlTimer()
-	cronJob.StartTask("SaveInvertedIndexStringToMysql")
-
-	////启动定时任务，更新爬取状态
-	updateCrawDoneTimer()
-	//// 启动定时任务，更新分词状态
-	updateDicDoneTimer(cronJob)
 	beego.Run()
 	database.Close()
 	database.CloseRedis()
