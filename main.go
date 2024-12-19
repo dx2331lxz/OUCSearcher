@@ -129,7 +129,7 @@ func worker(url string, wg *sync.WaitGroup) error {
 	//fmt.Println("Fetching:", url)
 	doc, err := Fetch(url)
 	if err != nil {
-		log.Println("Error fetching:", url, err)
+		//log.Println("Error fetching:", url, err)
 		return err
 	}
 	page := &models.Page{Url: url}
@@ -239,7 +239,7 @@ func crawl() {
 func CrawlTimer() {
 	c := cron.New(cron.WithSeconds())
 	// 每个10s执行一次
-	c.AddFunc("*/10 * * * * *", crawl)
+	c.AddFunc("*/20 * * * * *", crawl)
 	c.Start()
 }
 
@@ -344,30 +344,30 @@ func main() {
 	logs.SetLogFuncCallDepth(3)
 	logs.SetLogFuncCall(true) // 记录文件名和行号
 
-	// 创建定时器
-	//cronJob := tools.NewCronJob()
-
 	// 迁移数据库
 	//migrate()
 
-	//// 启动redis从mysql获取urls
-	//models.GetUrlsFromMysqlTimer()
-	//
-	//// 开始爬取，定时爬取，每隔一段时间爬取一次
-	//CrawlTimer()
-	//
-	//// 启动定时任务，生成倒排索引并且将结果添加到redis中
-	////tools.GenerateInvertedIndexAndAddToRedisTimer()
-	//cronJob.StartTask("GenerateInvertedIndexAndAddToRedis")
-	//
-	//// 启动定时任务，将倒排索引存入mysql
-	////tools.SaveInvertedIndexStringToMysqlTimer()
-	//cronJob.StartTask("SaveInvertedIndexStringToMysql")
-	//
-	//////启动定时任务，更新爬取状态
-	//updateCrawDoneTimer()
-	////// 启动定时任务，更新分词状态
-	//updateDicDoneTimer(cronJob)
+	// 创建定时器
+	cronJob := tools.NewCronJob()
+
+	// 启动redis从mysql获取urls
+	models.GetUrlsFromMysqlTimer()
+
+	// 开始爬取，定时爬取，每隔一段时间爬取一次
+	CrawlTimer()
+
+	// 启动定时任务，生成倒排索引并且将结果添加到redis中
+	//tools.GenerateInvertedIndexAndAddToRedisTimer()
+	cronJob.StartTask("GenerateInvertedIndexAndAddToRedis")
+
+	// 启动定时任务，将倒排索引存入mysql
+	//tools.SaveInvertedIndexStringToMysqlTimer()
+	cronJob.StartTask("SaveInvertedIndexStringToMysql")
+
+	////启动定时任务，更新爬取状态
+	updateCrawDoneTimer()
+	//// 启动定时任务，更新分词状态
+	updateDicDoneTimer(cronJob)
 
 	beego.Run()
 	database.Close()

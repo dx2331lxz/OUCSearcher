@@ -18,7 +18,7 @@ func GetUrlsFromMysql(n int, wg *sync.WaitGroup) {
 
 	tableSuffix := fmt.Sprintf("%02x", n)
 	// 获取未爬取的url
-	urls, err := GetNUnCrawled(tableSuffix, 100)
+	urls, err := GetNUnCrawled(tableSuffix, 10)
 	if err != nil {
 		return
 	}
@@ -42,10 +42,17 @@ func GetUrlsFromMysqlTimer() {
 	var wg sync.WaitGroup
 	c := cron.New(cron.WithSeconds())
 	// 每个10s执行一次
-	c.AddFunc("*/120 * * * * *", func() {
-		for i := 0; i < 256; i++ {
-			wg.Add(1)
-			go GetUrlsFromMysql(i, &wg)
+	c.AddFunc("*/240 * * * * *", func() {
+		count, err := GetUrlsCount()
+		if err != nil {
+			log.Println("Error getting urls count:", err)
+			return
+		}
+		if count < 10000 {
+			for i := 0; i < 256; i++ {
+				wg.Add(1)
+				go GetUrlsFromMysql(i, &wg)
+			}
 		}
 		wg.Wait()
 	})
@@ -257,4 +264,9 @@ func DeleteListKeysExcludingUrls() error {
 	wg.Wait()
 	fmt.Println("All list keys excluding 'urls' have been deleted")
 	return nil
+}
+
+// GetUrlsCount 获取列表urls的值的数量
+func GetUrlsCount() (int64, error) {
+	return database.RDB.LLen(context.Background(), "urls").Result()
 }
