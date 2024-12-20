@@ -1,34 +1,57 @@
 package tools
 
 import (
+	"fmt"
 	"github.com/robfig/cron/v3"
 	"log"
 	"sync"
 )
+
+type JobMutex struct {
+	mu             sync.Mutex
+	taskInProgress bool
+}
 
 type CronJob struct {
 	c         *cron.Cron              // cron 调度器
 	jobIDs    map[string]cron.EntryID // 存储每个定时任务的 jobID
 	mu        sync.Mutex              // 锁，确保线程安全
 	isRunning bool                    // 是否正在运行
-	taskMap   map[string]func() error // 任务名与任务函数的映射
+	jobMutex  map[string]*JobMutex
 }
 
 var TaskMap = map[string]func() error{
 	"GenerateInvertedIndexAndAddToRedis": GenerateInvertedIndexAndAddToRedis,
 	"SaveInvertedIndexStringToMysql":     SaveInvertedIndexStringToMysql,
+	"UpdateCrawDone":                     UpdateCrawDone,
 }
 
 var TaskCronExprMap = map[string]string{
 	"GenerateInvertedIndexAndAddToRedis": "*/120 * * * * *",
 	"SaveInvertedIndexStringToMysql":     "*/10 * * * * *",
+	"UpdateCrawDone":                     "0 0 0 * * *",
+}
+
+// NewJobMutex 构造函数，设置默认值
+func NewJobMutex() *JobMutex {
+	return &JobMutex{
+		mu:             sync.Mutex{}, // 显式设置默认值
+		taskInProgress: false,        // 显式设置默认值
+	}
 }
 
 // NewCronJob 创建并返回一个新的 CronJob 实例
 func NewCronJob() *CronJob {
+	// 循环遍历 TaskMap，创建 JobMutex 实例
+	jobMutex := make(map[string]*JobMutex)
+	for taskName := range TaskMap {
+		jobMutex[taskName] = NewJobMutex()
+	}
+
 	return &CronJob{
-		c:      cron.New(cron.WithSeconds()),
-		jobIDs: make(map[string]cron.EntryID),
+		c:        cron.New(cron.WithSeconds()),
+		jobIDs:   make(map[string]cron.EntryID),
+		jobMutex: jobMutex,
 	}
 }
 
@@ -40,6 +63,16 @@ func (job *CronJob) Start() {
 	// 添加定时任务
 	for taskName, taskFunc := range TaskMap {
 		jobID, err := job.c.AddFunc(TaskCronExprMap[taskName], func() {
+			if job.jobMutex[taskName].taskInProgress {
+				log.Printf("Task %s is already running, skipping...\n", taskName)
+				return
+			}
+			job.jobMutex[taskName].mu.Lock()
+			job.jobMutex[taskName].taskInProgress = true
+			defer func() {
+				job.jobMutex[taskName].taskInProgress = false
+				job.jobMutex[taskName].mu.Unlock()
+			}()
 			err := taskFunc()
 			if err != nil {
 				log.Printf("Error running task %s: %v\n", taskName, err)
@@ -108,6 +141,17 @@ func (job *CronJob) StartTask(taskName string) {
 
 	if taskFunc, exists := TaskMap[taskName]; exists {
 		jobID, err := job.c.AddFunc(TaskCronExprMap[taskName], func() {
+			if job.jobMutex[taskName].taskInProgress {
+				fmt.Printf("Task %s is already running, skipping...\n", taskName)
+				//log.Printf("Task %s is already running, skipping...\n", taskName)
+				return
+			}
+			job.jobMutex[taskName].mu.Lock()
+			job.jobMutex[taskName].taskInProgress = true
+			defer func() {
+				job.jobMutex[taskName].taskInProgress = false
+				job.jobMutex[taskName].mu.Unlock()
+			}()
 			err := taskFunc()
 			if err != nil {
 				log.Printf("Error running task %s: %v\n", taskName, err)

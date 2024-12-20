@@ -4,10 +4,12 @@ import (
 	"OUCSearcher/database"
 	"OUCSearcher/models"
 	"context"
+	"crypto/md5"
 	"fmt"
 	"github.com/yanyiwu/gojieba"
 	"log"
 	"sync"
+	"time"
 )
 
 // 不需要进行分词的字符列表
@@ -56,6 +58,7 @@ func fenci(s string) []string {
 
 // GenerateInvertedIndexAndAddToRedis 生成倒排索引
 func GenerateInvertedIndexAndAddToRedis() error {
+
 	var wg sync.WaitGroup
 	// 从数据库中取出所有的数据
 	for i := 0; i < 256; i++ {
@@ -111,6 +114,7 @@ func addToRedis(word, tableSuffix string, DicID, count, textLength int) error {
 
 // 更新数据库中dic_done字段
 func updateDicDone(tableSuffix string, DicID int) error {
+
 	_, err := models.UpdateDicDone(tableSuffix, DicID)
 	if err != nil {
 		return fmt.Errorf("Error updating dic_done: %v", err)
@@ -207,15 +211,60 @@ func getIntegrateInvertedIndexString(n int) map[string]string {
 
 // SaveInvertedIndexStringToMysql 使用mysql事务将倒排索引字符串存入数据库
 func SaveInvertedIndexStringToMysql() error {
-	//获取一百个词的倒排索引
+	// 打印当前时间，并且附带信息：开始执行 SaveInvertedIndexStringToMysql
+	currentTime := time.Now()
+	fmt.Printf("当前时间: %s - 开始执行 SaveInvertedIndexStringToMysql\n", currentTime.Format("2006-01-02 15:04:05"))
+	// 获取一百个词的倒排索引
 	indexStrings := getIntegrateInvertedIndexString(1000)
-	// 查看indexStrings是否为空
+	// 查看 indexStrings 是否为空
 	if len(indexStrings) == 0 {
 		return nil
 	}
-	err := models.SaveMapToDB(indexStrings)
-	if err != nil {
-		return fmt.Errorf("Error saving inverted index to MySQL: %v", err)
+
+	// 初始化一个 map 来存储倒排索引
+	var indexStringsMap = make(map[string]map[string]string)
+	for key, value := range indexStrings {
+		hash := md5.New()
+		_, err := hash.Write([]byte(key))
+		if err != nil {
+			return fmt.Errorf("failed to write data to hash: %v", err)
+		}
+		// 获取哈希值的最后一位（字节）
+		hashValue := hash.Sum(nil)
+
+		// 提取最后一个字节
+		lastByte := hashValue[len(hashValue)-1]
+
+		// 将最后一个字节转换为小写十六进制字符
+		lastHexChar := fmt.Sprintf("%02x", lastByte)
+
+		// 如果 indexStringsMap[lastHexChar] 是 nil，初始化它
+		if indexStringsMap[lastHexChar] == nil {
+			indexStringsMap[lastHexChar] = make(map[string]string)
+		}
+
+		// 现在可以安全地将 key 和 value 插入到 map 中
+		indexStringsMap[lastHexChar][key] = value
 	}
+
+	// 使用 WaitGroup 进行并发插入
+	var wg sync.WaitGroup
+	for tableSuffix, indexStrings := range indexStringsMap {
+		wg.Add(1)
+		go func(indexStrings map[string]string, tableSuffix string) {
+			defer wg.Done()
+			fmt.Println("begin to save inverted index to mysql table:", tableSuffix)
+			err := models.SaveMapToTable(indexStrings, tableSuffix)
+			if err != nil {
+				log.Println("Error saving inverted index to MySQL:", err)
+			}
+			fmt.Println("save inverted index to mysql table successful:", tableSuffix)
+		}(indexStrings, tableSuffix)
+	}
+	wg.Wait()
+	fmt.Println("all inverted index saved to mysql")
+	// 打印当前时间，并且附带信息：结束执行 SaveInvertedIndexStringToMysql
+	currentTime = time.Now()
+	fmt.Printf("当前时间: %s - 结束执行 SaveInvertedIndexStringToMysql\n", currentTime.Format("2006-01-02 15:04:05"))
 	return nil
 }

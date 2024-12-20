@@ -243,24 +243,24 @@ func CrawlTimer() {
 	c.Start()
 }
 
-// 定时更新page的爬取状态
-func updateCrawDoneTimer() {
-	c := cron.New(cron.WithSeconds())
-	// 每天执行一次
-	c.AddFunc("0 0 0 * * *", func() {
-		err := models.DeleteAllVisitedUrls()
-		if err != nil {
-			log.Println("Error deleting all visited urls:", err)
-			return
-		}
-		err = models.SetCrawDoneToZero()
-		if err != nil {
-			log.Println("Error setting craw_done to zero:", err)
-			return
-		}
-	})
-	c.Start()
-}
+//// 定时更新page的爬取状态
+//func updateCrawDoneTimer() {
+//	c := cron.New(cron.WithSeconds())
+//	// 每天执行一次
+//	c.AddFunc("0 0 0 * * *", func() {
+//		err := models.DeleteAllVisitedUrls()
+//		if err != nil {
+//			log.Println("Error deleting all visited urls:", err)
+//			return
+//		}
+//		err = models.SetCrawDoneToZero()
+//		if err != nil {
+//			log.Println("Error setting craw_done to zero:", err)
+//			return
+//		}
+//	})
+//	c.Start()
+//}
 
 func updateDicDone(cronJob *tools.CronJob) {
 	// 停止GenerateInvertedIndexAndAddToRedisTimer定时器
@@ -365,7 +365,7 @@ func main() {
 	cronJob.StartTask("SaveInvertedIndexStringToMysql")
 
 	////启动定时任务，更新爬取状态
-	updateCrawDoneTimer()
+	cronJob.StartTask("UpdateCrawDone")
 	//// 启动定时任务，更新分词状态
 	updateDicDoneTimer(cronJob)
 

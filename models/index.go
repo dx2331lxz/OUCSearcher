@@ -107,6 +107,27 @@ func SaveMapToDB(data map[string]string) error {
 	return nil
 }
 
+// SaveMapToTable 保存到表中
+func SaveMapToTable(data map[string]string, lastHexChar string) error {
+	currentIndexTable, err := GetCurrentIndexTable(1)
+	if err != nil {
+		return fmt.Errorf("failed to get current index table: %v", err)
+	}
+	tableName := fmt.Sprintf("%s_%s", currentIndexTable, lastHexChar)
+	sqlInsert := "INSERT INTO " + tableName + " (name, index_string) VALUES %s ON DUPLICATE KEY UPDATE index_string = IFNULL(CONCAT(index_string, '-', VALUES(index_string)), VALUES(index_string))"
+	var values string
+	for name, indexStr := range data {
+		values += fmt.Sprintf("('%s', '%s'),", name, indexStr)
+	}
+	values = values[:len(values)-1] // 去掉最后一个逗号
+	sqlInsert = fmt.Sprintf(sqlInsert, values)
+	_, err = database.DB.Exec(sqlInsert)
+	if err != nil {
+		return fmt.Errorf("failed to insert record: %v", err)
+	}
+	return nil
+}
+
 // GetIndexString 目前确保在获取index数据的时候使用表2的数据
 // GetIndexString 通过 name 获取 index_string
 func GetIndexString(name string) (string, error) {

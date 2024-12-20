@@ -3,6 +3,7 @@ package models
 import (
 	"OUCSearcher/database"
 	"OUCSearcher/types"
+	"context"
 	"crypto/md5"
 	"database/sql"
 	"fmt"
@@ -61,7 +62,7 @@ type SearchResult struct {
 //	return "page"
 //}
 
-// 获取表名
+// GetTableName 获取表名
 func GetTableName(url string) (string, error) {
 	// 计算 MD5 哈希值
 	hash := md5.New()
@@ -149,9 +150,12 @@ func GetTableName(url string) (string, error) {
 func (p *Page) Create() (sql.Result, error) {
 	// 创建
 	// 获取表名
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	tableName, err := GetTableName(p.Url)
 	sqlString := fmt.Sprintf("INSERT INTO %s (url, host, craw_done, dic_done, craw_time, origin_title, referrer_id, scheme, domain1, domain2, path, query, title, text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", tableName)
-	result, err := database.DB.Exec(sqlString, p.Url, p.Host, p.CrawDone, p.DicDone, p.CrawTime, p.OriginTitle, p.ReferrerId, p.Scheme, p.Domain1, p.Domain2, p.Path, p.Query, p.Title, p.Text, time.Now())
+	//result, err := database.DB.Exec(sqlString, p.Url, p.Host, p.CrawDone, p.DicDone, p.CrawTime, p.OriginTitle, p.ReferrerId, p.Scheme, p.Domain1, p.Domain2, p.Path, p.Query, p.Title, p.Text, time.Now())
+	result, err := database.DB.ExecContext(ctx, sqlString, p.Url, p.Host, p.CrawDone, p.DicDone, p.CrawTime, p.OriginTitle, p.ReferrerId, p.Scheme, p.Domain1, p.Domain2, p.Path, p.Query, p.Title, p.Text, time.Now())
 	if err != nil {
 		log.Println("Error creating page:", p.Url, err)
 		return nil, err
@@ -161,11 +165,13 @@ func (p *Page) Create() (sql.Result, error) {
 
 // Update 以ID为条件更新
 func (p *Page) Update() (sql.Result, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	// 获取表名
 	tableName, err := GetTableName(p.Url)
 	sqlString := fmt.Sprintf("UPDATE %s SET host = ?, craw_done = ?, dic_done = ?, craw_time = ?, origin_title = ?, referrer_id = ?, scheme = ?, domain1 = ?, domain2 = ?, path = ?, query = ?, title = ?, text = ?, created_at = ? WHERE url = ?", tableName)
 	//fmt.Println(sqlString, p.Url, p.Host, p.CrawDone, p.DicDone, p.CrawTime, p.OriginTitle, p.ReferrerId, p.Scheme, p.Domain1, p.Domain2, p.Path, p.Query, p.Title, p.Text, time.Now(), p.ID)
-	result, err := database.DB.Exec(sqlString, p.Host, p.CrawDone, p.DicDone, p.CrawTime, p.OriginTitle, p.ReferrerId, p.Scheme, p.Domain1, p.Domain2, p.Path, p.Query, p.Title, p.Text, time.Now(), p.Url)
+	result, err := database.DB.ExecContext(ctx, sqlString, p.Host, p.CrawDone, p.DicDone, p.CrawTime, p.OriginTitle, p.ReferrerId, p.Scheme, p.Domain1, p.Domain2, p.Path, p.Query, p.Title, p.Text, time.Now(), p.Url)
 	if err != nil {
 		log.Println("Error updating page:", p.Url, err)
 		return nil, err
@@ -255,13 +261,22 @@ func GetNUnDicDone(TableSuffix string, n int) ([]PageDic, error) {
 	return pageDics, nil
 }
 
-// UpdateDicDone 更新已经分词
+// UpdateDicDone 更新已经分词,超时时间为5秒
 func UpdateDicDone(TableSuffix string, id int) (sql.Result, error) {
+	// 设置超时时间为 5 秒（可以根据实际需求调整）
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 构造 SQL 查询
 	sqlString := fmt.Sprintf("UPDATE page_%s SET dic_done = 1 WHERE id = ?", TableSuffix)
-	result, err := database.DB.Exec(sqlString, id)
+
+	// 使用 ExecContext 执行 SQL 查询
+	result, err := database.DB.ExecContext(ctx, sqlString, id)
 	if err != nil {
 		return nil, err
 	}
+
+	// 返回执行结果
 	return result, nil
 }
 

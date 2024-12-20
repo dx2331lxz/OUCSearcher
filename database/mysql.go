@@ -19,7 +19,7 @@ func Initialize(cfg *config.Config) {
 		log.Fatalf("Could not connect to the database: %v", err)
 	}
 	// 设置连接池大小
-	DB.SetMaxOpenConns(130) // 最大打开连接数
+	DB.SetMaxOpenConns(110) // 最大打开连接数
 	DB.SetMaxIdleConns(10)  // 最大空闲连接数
 	// 测试数据库连接
 	err = DB.Ping()
