@@ -44,6 +44,7 @@ func GetUrlsFromMysqlTimer() {
 	// 每个10s执行一次
 	c.AddFunc("*/240 * * * * *", func() {
 		count, err := GetUrlsCount()
+		log.Println("Urls count:", count)
 		if err != nil {
 			log.Println("Error getting urls count:", err)
 			return
