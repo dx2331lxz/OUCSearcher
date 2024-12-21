@@ -77,7 +77,7 @@ func GetUrlsFromMysqlTimer() {
 
 // GetUrlFromRedis 从redis中阻塞地取出1条url
 func GetUrlFromRedis() (string, error) {
-	url, err := database.RDB.BRPop(context.Background(), 0, "urls").Result()
+	url, err := database.RDB.BRPop(context.Background(), 5, "urls").Result()
 	if err != nil {
 		return "", err
 	}

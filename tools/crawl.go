@@ -25,7 +25,7 @@ func Fetch(url string) (*html.Node, error) {
 
 	// 使用 http.Client 发送请求
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 10 * time.Second,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
