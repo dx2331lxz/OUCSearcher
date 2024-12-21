@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const NumberOfCrawl = 2000
+const NumberOfCrawl = 10000
 
 // Fetch downloads the webpage and returns its HTML content
 func Fetch(url string) (*html.Node, error) {
@@ -25,7 +25,7 @@ func Fetch(url string) (*html.Node, error) {
 
 	// 使用 http.Client 发送请求
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 5 * time.Second,
 	}
 	resp, err := client.Do(req)
 	if err != nil {

@@ -9,7 +9,6 @@ import (
 	"github.com/yanyiwu/gojieba"
 	"log"
 	"sync"
-	"time"
 )
 
 // 不需要进行分词的字符列表
@@ -174,7 +173,6 @@ func integrateInvertedIndexString() map[string]string {
 
 // 获取整合的倒排索引字符串
 func getIntegrateInvertedIndexString(n int) map[string]string {
-	fmt.Println("getIntegrateInvertedIndexString begin")
 	finalResult := make(map[string]string)
 
 	channel := make(chan map[string]string, n)
@@ -207,23 +205,18 @@ func getIntegrateInvertedIndexString(n int) map[string]string {
 			finalResult[key] += "-" + value
 		}
 	}
-
-	fmt.Println("getIntegrateInvertedIndexString end")
 	return finalResult
 }
 
 // SaveInvertedIndexStringToMysql 使用mysql事务将倒排索引字符串存入数据库
 func SaveInvertedIndexStringToMysql() error {
 	// 打印当前时间，并且附带信息：开始执行 SaveInvertedIndexStringToMysql
-	currentTime := time.Now()
-	fmt.Printf("当前时间: %s - 开始执行 SaveInvertedIndexStringToMysql\n", currentTime.Format("2006-01-02 15:04:05"))
 	// 获取4000个词的倒排索引
 	indexStrings := getIntegrateInvertedIndexString(2000)
 	// 查看 indexStrings 是否为空
 	if len(indexStrings) == 0 {
 		return nil
 	}
-	fmt.Println("indexStrings:", indexStrings)
 
 	// 初始化一个 map 来存储倒排索引
 	var indexStringsMap = make(map[string]map[string]string)
@@ -249,9 +242,7 @@ func SaveInvertedIndexStringToMysql() error {
 
 		// 现在可以安全地将 key 和 value 插入到 map 中
 		indexStringsMap[lastHexChar][key] = value
-		fmt.Println("indexStringsMap:", indexStringsMap)
 	}
-	fmt.Println("整理Map结束")
 
 	// 使用 WaitGroup 进行并发插入
 	var wg sync.WaitGroup
@@ -264,18 +255,12 @@ func SaveInvertedIndexStringToMysql() error {
 		//}
 		go func(indexStrings map[string]string, tableSuffix string) {
 			defer wg.Done()
-			fmt.Println("begin to save inverted index to mysql table:", tableSuffix)
 			err := models.SaveMapToTable(indexStrings, tableSuffix)
 			if err != nil {
 				log.Println("Error saving inverted index to MySQL:", err)
 			}
-			fmt.Println("save inverted index to mysql table successful:", tableSuffix)
 		}(indexStringMap, tableSuffix)
 	}
 	wg.Wait()
-	fmt.Println("all inverted index saved to mysql")
-	// 打印当前时间，并且附带信息：结束执行 SaveInvertedIndexStringToMysql
-	currentTime = time.Now()
-	fmt.Printf("当前时间: %s - 结束执行 SaveInvertedIndexStringToMysql\n", currentTime.Format("2006-01-02 15:04:05"))
 	return nil
 }

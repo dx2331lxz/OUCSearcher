@@ -41,7 +41,7 @@ var TaskCronExprMap = map[string]string{
 	"GenerateInvertedIndexAndAddToRedis": "*/60 * * * * *",
 	"SaveInvertedIndexStringToMysql":     "*/10 * * * * *",
 	"UpdateCrawDone":                     "0 0 0 * * *",
-	"Crawl":                              "*/20 * * * * *",
+	"Crawl":                              "*/5 * * * * *",
 	"GetUrlsFromMysqlJob":                "*/240 * * * * *",
 	"UpdateDicDoneJob":                   "0 0 0 * * *",
 }

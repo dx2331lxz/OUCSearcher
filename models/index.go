@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 )
 
 type Index struct {
@@ -108,23 +109,60 @@ func SaveMapToDB(data map[string]string) error {
 }
 
 // SaveMapToTable 保存到表中
+//
+//	func SaveMapToTable(data map[string]string, lastHexChar string) error {
+//		currentIndexTable, err := GetCurrentIndexTable(1)
+//		if err != nil {
+//			return fmt.Errorf("failed to get current index table: %v", err)
+//		}
+//		tableName := fmt.Sprintf("%s_%s", currentIndexTable, lastHexChar)
+//		sqlInsert := "INSERT INTO " + tableName + " (name, index_string) VALUES %s ON DUPLICATE KEY UPDATE index_string = IFNULL(CONCAT(index_string, '-', VALUES(index_string)), VALUES(index_string))"
+//		var values string
+//		for name, indexStr := range data {
+//			values += fmt.Sprintf("('%s', '%s'),", name, indexStr)
+//		}
+//		values = values[:len(values)-1] // 去掉最后一个逗号
+//		sqlInsert = fmt.Sprintf(sqlInsert, values)
+//		_, err = database.DB.Exec(sqlInsert)
+//		if err != nil {
+//			return fmt.Errorf("failed to insert record: %v", err)
+//		}
+//		return nil
+//	}
 func SaveMapToTable(data map[string]string, lastHexChar string) error {
+	// 获取当前索引表
 	currentIndexTable, err := GetCurrentIndexTable(1)
 	if err != nil {
 		return fmt.Errorf("failed to get current index table: %v", err)
 	}
+
+	// 动态构造表名
 	tableName := fmt.Sprintf("%s_%s", currentIndexTable, lastHexChar)
-	sqlInsert := "INSERT INTO " + tableName + " (name, index_string) VALUES %s ON DUPLICATE KEY UPDATE index_string = IFNULL(CONCAT(index_string, '-', VALUES(index_string)), VALUES(index_string))"
-	var values string
+
+	// 构建 SQL 插入语句，使用占位符
+	sqlInsert := fmt.Sprintf("INSERT INTO %s (name, index_string) VALUES ", tableName)
+
+	// 使用参数化查询，避免直接拼接字符串
+	var valueStrings []string
+	var params []interface{}
 	for name, indexStr := range data {
-		values += fmt.Sprintf("('%s', '%s'),", name, indexStr)
+		// 对每个键值对生成插入的占位符
+		valueStrings = append(valueStrings, "(?, ?)")
+		params = append(params, name, indexStr)
 	}
-	values = values[:len(values)-1] // 去掉最后一个逗号
-	sqlInsert = fmt.Sprintf(sqlInsert, values)
-	_, err = database.DB.Exec(sqlInsert)
+
+	// 拼接所有占位符
+	sqlInsert += strings.Join(valueStrings, ", ")
+
+	// 添加 ON DUPLICATE KEY UPDATE 语句
+	sqlInsert += " ON DUPLICATE KEY UPDATE index_string = IFNULL(CONCAT(index_string, '-', VALUES(index_string)), VALUES(index_string))"
+
+	// 执行 SQL 查询，使用参数化查询避免注入
+	_, err = database.DB.Exec(sqlInsert, params...)
 	if err != nil {
 		return fmt.Errorf("failed to insert record: %v", err)
 	}
+
 	return nil
 }
 
