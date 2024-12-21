@@ -152,7 +152,7 @@ func integrateInvertedIndexString() map[string]string {
 	}
 	// 取出key对应的value
 	values, err := database.RDB.LRange(context.Background(), key, 0, -1).Result()
-	if err != nil || len(values) < 2 {
+	if err != nil {
 		return nil
 	}
 	// 整合倒排索引字符串
@@ -174,25 +174,13 @@ func integrateInvertedIndexString() map[string]string {
 
 // 获取整合的倒排索引字符串
 func getIntegrateInvertedIndexString(n int) map[string]string {
-	indexStrings := make(map[string]string)
-	channel := make(chan map[string]string, n)
+	fmt.Println("getIntegrateInvertedIndexString begin")
+	finalResult := make(map[string]string)
 
+	channel := make(chan map[string]string, n)
 	var wg sync.WaitGroup
 
-	// 合并部分结果
-	go func() {
-		for partIndex := range channel {
-			for key, value := range partIndex {
-				if _, ok := indexStrings[key]; !ok {
-					indexStrings[key] = value
-					continue
-				}
-				indexStrings[key] += "-" + value
-			}
-		}
-	}()
-
-	// 启动多个goroutine来计算部分结果
+	// 启动多个 goroutine 来计算部分结果
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func() {
@@ -204,9 +192,24 @@ func getIntegrateInvertedIndexString(n int) map[string]string {
 		}()
 	}
 
-	wg.Wait()
-	close(channel)
-	return indexStrings
+	go func() {
+		wg.Wait()
+		close(channel)
+	}()
+
+	// 合并部分结果
+	for partIndex := range channel {
+		for key, value := range partIndex {
+			if _, ok := finalResult[key]; !ok {
+				finalResult[key] = value
+				continue
+			}
+			finalResult[key] += "-" + value
+		}
+	}
+
+	fmt.Println("getIntegrateInvertedIndexString end")
+	return finalResult
 }
 
 // SaveInvertedIndexStringToMysql 使用mysql事务将倒排索引字符串存入数据库
@@ -214,12 +217,13 @@ func SaveInvertedIndexStringToMysql() error {
 	// 打印当前时间，并且附带信息：开始执行 SaveInvertedIndexStringToMysql
 	currentTime := time.Now()
 	fmt.Printf("当前时间: %s - 开始执行 SaveInvertedIndexStringToMysql\n", currentTime.Format("2006-01-02 15:04:05"))
-	// 获取一百个词的倒排索引
-	indexStrings := getIntegrateInvertedIndexString(1000)
+	// 获取4000个词的倒排索引
+	indexStrings := getIntegrateInvertedIndexString(2000)
 	// 查看 indexStrings 是否为空
 	if len(indexStrings) == 0 {
 		return nil
 	}
+	fmt.Println("indexStrings:", indexStrings)
 
 	// 初始化一个 map 来存储倒排索引
 	var indexStringsMap = make(map[string]map[string]string)
@@ -245,12 +249,19 @@ func SaveInvertedIndexStringToMysql() error {
 
 		// 现在可以安全地将 key 和 value 插入到 map 中
 		indexStringsMap[lastHexChar][key] = value
+		fmt.Println("indexStringsMap:", indexStringsMap)
 	}
+	fmt.Println("整理Map结束")
 
 	// 使用 WaitGroup 进行并发插入
 	var wg sync.WaitGroup
-	for tableSuffix, indexStrings := range indexStringsMap {
+	for tableSuffix, indexStringMap := range indexStringsMap {
 		wg.Add(1)
+		//// 创建 indexStrings 的副本
+		//localIndexStrings := make(map[string]string)
+		//for key, value := range indexStringMap {
+		//	localIndexStrings[key] = value
+		//}
 		go func(indexStrings map[string]string, tableSuffix string) {
 			defer wg.Done()
 			fmt.Println("begin to save inverted index to mysql table:", tableSuffix)
@@ -259,7 +270,7 @@ func SaveInvertedIndexStringToMysql() error {
 				log.Println("Error saving inverted index to MySQL:", err)
 			}
 			fmt.Println("save inverted index to mysql table successful:", tableSuffix)
-		}(indexStrings, tableSuffix)
+		}(indexStringMap, tableSuffix)
 	}
 	wg.Wait()
 	fmt.Println("all inverted index saved to mysql")

@@ -264,7 +264,7 @@ func GetNUnDicDone(TableSuffix string, n int) ([]PageDic, error) {
 // UpdateDicDone 更新已经分词,超时时间为5秒
 func UpdateDicDone(TableSuffix string, id int) (sql.Result, error) {
 	// 设置超时时间为 5 秒（可以根据实际需求调整）
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// 构造 SQL 查询

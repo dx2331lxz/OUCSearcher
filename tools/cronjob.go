@@ -7,6 +7,14 @@ import (
 	"sync"
 )
 
+// 创建定时器
+
+var CronJobSub *CronJob
+
+func init() {
+	CronJobSub = NewCronJob()
+}
+
 type JobMutex struct {
 	mu             sync.Mutex
 	taskInProgress bool
@@ -24,12 +32,18 @@ var TaskMap = map[string]func() error{
 	"GenerateInvertedIndexAndAddToRedis": GenerateInvertedIndexAndAddToRedis,
 	"SaveInvertedIndexStringToMysql":     SaveInvertedIndexStringToMysql,
 	"UpdateCrawDone":                     UpdateCrawDone,
+	"Crawl":                              Crawl,
+	"GetUrlsFromMysqlJob":                GetUrlsFromMysqlJob,
+	"UpdateDicDoneJob":                   UpdateDicDoneJob,
 }
 
 var TaskCronExprMap = map[string]string{
-	"GenerateInvertedIndexAndAddToRedis": "*/120 * * * * *",
+	"GenerateInvertedIndexAndAddToRedis": "*/60 * * * * *",
 	"SaveInvertedIndexStringToMysql":     "*/10 * * * * *",
 	"UpdateCrawDone":                     "0 0 0 * * *",
+	"Crawl":                              "*/20 * * * * *",
+	"GetUrlsFromMysqlJob":                "*/240 * * * * *",
+	"UpdateDicDoneJob":                   "0 0 0 * * *",
 }
 
 // NewJobMutex 构造函数，设置默认值
