@@ -130,3 +130,10 @@ BM25 算法是现代搜索引擎的基础，它可以很好地反映一个词和
 
 
 export GOPROXY=https://goproxy.cn
+
+## 博客总结
+go 初始化变量逻辑，循环依赖问题
+go cron并发问题
+go map并发读取问题
+函数中调用函数的话defer的执行顺序
+协程中调用函数并且传入wg会出问题么，http.client超时之后会发送什么

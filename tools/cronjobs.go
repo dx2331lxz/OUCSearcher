@@ -22,7 +22,9 @@ func UpdateCrawDone() error {
 }
 
 func Crawl() error {
+	log.Println("Crawling...")
 	crawl()
+	log.Println("Crawling done.")
 	return nil
 }
 
@@ -79,6 +81,7 @@ func UpdateDicDone() {
 		return
 	}
 	fmt.Println("置空分词表")
+
 }
 
 // UpdateDicDoneJob 更新页面的分词状态SetDicDoneToZero
@@ -91,6 +94,11 @@ func UpdateDicDoneJob() error {
 	}
 	if listKeysCount < 1000 {
 		UpdateDicDone()
+		// 重新开始GenerateInvertedIndexAndAddToRedisTimer定时器
+		CronJobSub.StartTask("GenerateInvertedIndexAndAddToRedis")
+		fmt.Println("重新开始GenerateInvertedIndexAndAddToRedis定时器")
+		// 重新开始SaveInvertedIndexStringToMysql定时器
+		CronJobSub.StartTask("SaveInvertedIndexStringToMysql")
 	}
 	return nil
 }

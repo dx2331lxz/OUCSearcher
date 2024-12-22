@@ -28,13 +28,16 @@ type CronJob struct {
 	jobMutex  map[string]*JobMutex
 }
 
-var TaskMap = map[string]func() error{
-	"GenerateInvertedIndexAndAddToRedis": GenerateInvertedIndexAndAddToRedis,
-	"SaveInvertedIndexStringToMysql":     SaveInvertedIndexStringToMysql,
-	"UpdateCrawDone":                     UpdateCrawDone,
-	"Crawl":                              Crawl,
-	"GetUrlsFromMysqlJob":                GetUrlsFromMysqlJob,
-	"UpdateDicDoneJob":                   UpdateDicDoneJob,
+// GetTaskMap 定义一个单独的函数，避免直接使用 TaskMap
+func GetTaskMap() map[string]func() error {
+	return map[string]func() error{
+		"GenerateInvertedIndexAndAddToRedis": GenerateInvertedIndexAndAddToRedis,
+		"SaveInvertedIndexStringToMysql":     SaveInvertedIndexStringToMysql,
+		"UpdateCrawDone":                     UpdateCrawDone,
+		"Crawl":                              Crawl,
+		"GetUrlsFromMysqlJob":                GetUrlsFromMysqlJob,
+		"UpdateDicDoneJob":                   UpdateDicDoneJob,
+	}
 }
 
 var TaskCronExprMap = map[string]string{
@@ -57,6 +60,7 @@ func NewJobMutex() *JobMutex {
 // NewCronJob 创建并返回一个新的 CronJob 实例
 func NewCronJob() *CronJob {
 	// 循环遍历 TaskMap，创建 JobMutex 实例
+	TaskMap := GetTaskMap()
 	jobMutex := make(map[string]*JobMutex)
 	for taskName := range TaskMap {
 		jobMutex[taskName] = NewJobMutex()
@@ -71,6 +75,7 @@ func NewCronJob() *CronJob {
 
 // Start 启动所有定时任务
 func (job *CronJob) Start() {
+	TaskMap := GetTaskMap()
 	job.mu.Lock()
 	defer job.mu.Unlock()
 
@@ -150,6 +155,7 @@ func (job *CronJob) StopTask(taskName string) {
 
 // StartTask 启动某个任务
 func (job *CronJob) StartTask(taskName string) {
+	TaskMap := GetTaskMap()
 	job.mu.Lock()
 	defer job.mu.Unlock()
 

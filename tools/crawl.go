@@ -2,9 +2,9 @@ package tools
 
 import (
 	"OUCSearcher/models"
+	"context"
 	"fmt"
 	"golang.org/x/net/html"
-	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -14,48 +14,51 @@ import (
 const NumberOfCrawl = 10000
 
 // Fetch downloads the webpage and returns its HTML content
-func Fetch(url string) (*html.Node, error) {
+func Fetch(ctx context.Context, url string) (*html.Node, error) {
+	// 创建 HTTP 请求
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
+
+	// 将 context 添加到请求中，这样在请求过程中可以使用 ctx 来取消请求
+	req = req.WithContext(ctx)
 
 	// 设置自定义的 Header，比如 User-Agent
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36 OUCSpider/1.0")
 
 	// 使用 http.Client 发送请求
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 10 * time.Second, // 设置客户端超时（可以与 ctx 配合使用）
 	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Error closing response body: %v", err)
 		}
-	}(resp.Body)
+	}()
 
 	// 检查返回状态码
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch: %s, status: %d", url, resp.StatusCode)
 	}
 
-	// 解析HTML
+	// 解析 HTML
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse: %s", url)
+		return nil, fmt.Errorf("failed to parse HTML from %s: %v", url, err)
 	}
+
 	return doc, nil
 }
 
 // worker 用于下载网页并提取链接
-func worker(url string, wg *sync.WaitGroup) error {
-	defer wg.Done()
+func worker(ctx context.Context, url string) error {
 	//fmt.Println("Fetching:", url)
-	doc, err := Fetch(url)
+	doc, err := Fetch(ctx, url)
 	if err != nil {
 		//log.Println("Error fetching:", url, err)
 		return err
@@ -133,8 +136,11 @@ func crawl() {
 	for i := 0; i < NumberOfCrawl; i++ {
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			// 获取url
+			fmt.Println("获取url")
 			url, err := models.GetUrlFromRedis()
+			fmt.Println("获取url成功", url)
 			if err != nil {
 				log.Println("Error getting url from redis:", err)
 				return
@@ -152,12 +158,16 @@ func crawl() {
 				//log.Println("URL has been visited, skipping...")
 				return
 			}
-
-			err = worker(url, &wg)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			fmt.Println("开始爬取", url)
+			err = worker(ctx, url)
+			fmt.Println("爬取结束", url)
 			if err != nil {
 				log.Println("Error fetching:", url, err)
 			}
 		}()
 	}
 	wg.Wait()
+	fmt.Println("本轮爬取全部结束")
 }

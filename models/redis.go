@@ -77,15 +77,15 @@ func GetUrlsFromMysqlTimer() {
 
 // GetUrlFromRedis 从redis中阻塞地取出1条url
 func GetUrlFromRedis() (string, error) {
-	url, err := database.RDB.BRPop(context.Background(), 5, "urls").Result()
+	url, err := database.RDB.RPop(context.Background(), "urls").Result() // 使用 RPop 而不是 BRPop
 	if err != nil {
 		return "", err
 	}
-	// 确保返回结果长度正确
-	if len(url) != 2 {
-		return "", fmt.Errorf("unexpected response from BRPop: %v", url)
+	// 确保返回结果正确
+	if url == "" {
+		return "", fmt.Errorf("unexpected empty response from RPop")
 	}
-	return url[1], nil
+	return url, nil
 }
 
 // AddUrlToVisitedSet AddUrlToSet 添加 URL 到去重集合
