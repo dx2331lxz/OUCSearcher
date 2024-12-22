@@ -100,7 +100,8 @@ func worker(ctx context.Context, url string) error {
 
 	// 提取链接
 	//fmt.Println(pId)
-	links := ExtractLinks(doc, url)
+	baseURL := urlInfo.Scheme + "://" + urlInfo.Host
+	links := ExtractLinks(doc, baseURL)
 	links = FilterUrl(links)
 	for _, link := range links {
 		isIn, err := models.IsUrlInAllUrls(link)
