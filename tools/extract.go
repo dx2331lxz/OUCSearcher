@@ -44,21 +44,27 @@ func StringStrip(input string) string {
 
 // ExtractTitle 解析html的title
 func ExtractTitle(doc *html.Node) string {
-	var title string
-	var f func(*html.Node)
-	f = func(n *html.Node) {
-		// 检查是否为 <title> 标签
+	// 定义一个递归函数，直接返回 title
+	var findTitle func(*html.Node) (string, bool)
+	findTitle = func(n *html.Node) (string, bool) {
+		// 检查当前节点是否为 <title>
 		if n.Type == html.ElementNode && n.Data == "title" && n.FirstChild != nil {
-			// 提取 <title> 标签中的文本
-			title = n.FirstChild.Data
-			return
+			return n.FirstChild.Data, true
 		}
-		// 继续遍历子节点
+		// 遍历子节点
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			f(c)
+			if title, found := findTitle(c); found {
+				return title, true
+			}
 		}
+		return "", false
 	}
-	f(doc)
+
+	// 调用递归函数，忽略 bool 值
+	title, _ := findTitle(doc)
+	if title == "" {
+		return "未知标题"
+	}
 	return title
 }
 

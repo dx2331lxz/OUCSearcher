@@ -139,9 +139,7 @@ func crawl() {
 		go func() {
 			defer wg.Done()
 			// 获取url
-			fmt.Println("获取url")
 			url, err := models.GetUrlFromRedis()
-			fmt.Println("获取url成功", url)
 			if err != nil {
 				log.Println("Error getting url from redis:", err)
 				return
@@ -161,14 +159,11 @@ func crawl() {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			fmt.Println("开始爬取", url)
 			err = worker(ctx, url)
-			fmt.Println("爬取结束", url)
 			if err != nil {
 				log.Println("Error fetching:", url, err)
 			}
 		}()
 	}
 	wg.Wait()
-	fmt.Println("本轮爬取全部结束")
 }
