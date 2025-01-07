@@ -46,7 +46,7 @@ var TaskCronExprMap = map[string]string{
 	"UpdateCrawDone":                     "0 0 0 */7 * *",
 	"Crawl":                              "*/5 * * * * *",
 	"GetUrlsFromMysqlJob":                "*/240 * * * * *",
-	"UpdateDicDoneJob":                   "0 0 0 * * *",
+	"UpdateDicDoneJob":                   "0 0 0 */7 * *",
 }
 
 // NewJobMutex 构造函数，设置默认值

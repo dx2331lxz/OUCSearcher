@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const NumberOfCrawl = 10000
+const NumberOfCrawl = 100
 
 // Fetch downloads the webpage and returns its HTML content
 func Fetch(ctx context.Context, url string) (*html.Node, error) {

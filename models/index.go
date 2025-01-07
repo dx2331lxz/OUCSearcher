@@ -193,7 +193,7 @@ func ClearIndexString() error {
 		if err != nil {
 			return fmt.Errorf("failed to get current index table: %v", err)
 		}
-		sqlString := fmt.Sprintf("UPDATE %s SET index_string = ''", tableName_)
+		sqlString := fmt.Sprintf("UPDATE %s SET index_string = NULL", tableName_)
 		_, err = database.DB.Exec(sqlString)
 		if err != nil {
 			return fmt.Errorf("failed to clear index_string: %v", err)
