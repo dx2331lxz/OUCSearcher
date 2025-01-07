@@ -35,17 +35,17 @@ func migrate() {
 		log.Fatal("failed to connect database:", err)
 	}
 	// 创建 256 张表
-	//for i := 0; i < 256; i++ {
-	//	tableName := fmt.Sprintf("page_%02x", i)
-	//	// 自动迁移
-	//	err = db.Table(tableName).AutoMigrate(&models.Page{})
-	//	if err != nil {
-	//		log.Fatal("failed to migrate database:", err)
-	//	} else {
-	//		log.Printf("Database %s migrated successfully!\n", tableName)
-	//	}
-	//}
-	//db.AutoMigrate(&models.IndexTableStatus{})
+	for i := 0; i < 256; i++ {
+		tableName := fmt.Sprintf("page_%02x", i)
+		// 自动迁移
+		err = db.Table(tableName).AutoMigrate(&models.Page{})
+		if err != nil {
+			log.Fatal("failed to migrate database:", err)
+		} else {
+			log.Printf("Database %s migrated successfully!\n", tableName)
+		}
+	}
+	db.AutoMigrate(&models.IndexTableStatus{})
 
 	for i := 0; i < 256; i++ {
 		tableName := fmt.Sprintf("index1_%02x", i)

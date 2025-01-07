@@ -31,19 +31,19 @@ type CronJob struct {
 // GetTaskMap 定义一个单独的函数，避免直接使用 TaskMap
 func GetTaskMap() map[string]func() error {
 	return map[string]func() error{
-		"GenerateInvertedIndexAndAddToRedis": GenerateInvertedIndexAndAddToRedis,
-		"SaveInvertedIndexStringToMysql":     SaveInvertedIndexStringToMysql,
-		"UpdateCrawDone":                     UpdateCrawDone,
-		"Crawl":                              Crawl,
-		"GetUrlsFromMysqlJob":                GetUrlsFromMysqlJob,
-		"UpdateDicDoneJob":                   UpdateDicDoneJob,
+		"GenerateInvertedIndexAndAddToRedis": GenerateInvertedIndexAndAddToRedis, // 生成倒排索引并存储到 Redis
+		"SaveInvertedIndexStringToMysql":     SaveInvertedIndexStringToMysql,     // 将倒排索引字符串存储到 MySQL
+		"UpdateCrawDone":                     UpdateCrawDone,                     // 更新爬取状态
+		"Crawl":                              Crawl,                              // 爬取网页
+		"GetUrlsFromMysqlJob":                GetUrlsFromMysqlJob,                // 从 MySQL 中获取 URL
+		"UpdateDicDoneJob":                   UpdateDicDoneJob,                   // 更新分词状态
 	}
 }
 
 var TaskCronExprMap = map[string]string{
 	"GenerateInvertedIndexAndAddToRedis": "*/60 * * * * *",
 	"SaveInvertedIndexStringToMysql":     "*/10 * * * * *",
-	"UpdateCrawDone":                     "0 0 0 * * *",
+	"UpdateCrawDone":                     "0 0 0 */7 * *",
 	"Crawl":                              "*/5 * * * * *",
 	"GetUrlsFromMysqlJob":                "*/240 * * * * *",
 	"UpdateDicDoneJob":                   "0 0 0 * * *",

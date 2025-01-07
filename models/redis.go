@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/robfig/cron/v3"
-	"hash/fnv"
 	"log"
 	"sync"
 )
@@ -92,52 +91,52 @@ func GetUrlFromRedis() (string, error) {
 func AddUrlToVisitedSet(url string) error {
 	ctx := context.Background()
 	// 计算 URL 哈希值
-	h := fnv.New32a()
-	_, err := h.Write([]byte(url))
-	if err != nil {
-		// 错误处理：计算哈希值失败
-		return fmt.Errorf("failed to calculate hash for URL %s: %v", url, err)
-	}
-	hashedUrl := fmt.Sprintf("%d", h.Sum32()) // 将哈希值转换为字符串形式
+	//h := fnv.New32a()
+	//_, err := h.Write([]byte(url))
+	//if err != nil {
+	//	// 错误处理：计算哈希值失败
+	//	return fmt.Errorf("failed to calculate hash for URL %s: %v", url, err)
+	//}
+	//hashedUrl := fmt.Sprintf("%d", h.Sum32()) // 将哈希值转换为字符串形式
 
 	// 将哈希值添加到 Redis 的 set 集合中
-	err = database.RDB.SAdd(ctx, "visited_urls", hashedUrl).Err()
+	err := database.RDB.SAdd(ctx, "visited_urls", url).Err()
 	if err != nil {
 		// 错误处理：Redis 操作失败
 		return fmt.Errorf("failed to add hashed URL to Redis set: %v", err)
 	}
 
-	log.Printf("Added hashed URL to set: %s (original URL: %s)", hashedUrl, url)
+	log.Printf("Added hashed URL to set: %s", url)
 	return nil
 }
 
 // IsUrlVisited 检查 URL 是否已存在
 func IsUrlVisited(url string) (bool, error) {
 	// 计算 URL 哈希值
-	h := fnv.New32a()
-	_, err := h.Write([]byte(url))
-	if err != nil {
-		// 错误处理：计算哈希值失败
-		log.Printf("failed to calculate hash for URL %s: %v\n", url, err)
-	}
-	hashedUrl := fmt.Sprintf("%d", h.Sum32()) // 将哈希值转换为字符串形式
-	return database.RDB.SIsMember(context.Background(), "visited_urls", hashedUrl).Result()
+	//h := fnv.New32a()
+	//_, err := h.Write([]byte(url))
+	//if err != nil {
+	//	// 错误处理：计算哈希值失败
+	//	log.Printf("failed to calculate hash for URL %s: %v\n", url, err)
+	//}
+	//hashedUrl := fmt.Sprintf("%d", h.Sum32()) // 将哈希值转换为字符串形式
+	return database.RDB.SIsMember(context.Background(), "visited_urls", url).Result()
 }
 
 // AddUrlToAllUrlSet 添加所有url的哈希值到add_urls
 func AddUrlToAllUrlSet(url string) error {
 	ctx := context.Background()
 	// 计算 URL 哈希值
-	h := fnv.New32a()
-	_, err := h.Write([]byte(url))
-	if err != nil {
-		// 错误处理：计算哈希值失败
-		return fmt.Errorf("failed to calculate hash for URL %s: %v", url, err)
-	}
-	hashedUrl := fmt.Sprintf("%d", h.Sum32()) // 将哈希值转换为字符串形式
+	//h := fnv.New32a()
+	//_, err := h.Write([]byte(url))
+	//if err != nil {
+	//	// 错误处理：计算哈希值失败
+	//	return fmt.Errorf("failed to calculate hash for URL %s: %v", url, err)
+	//}
+	//hashedUrl := fmt.Sprintf("%d", h.Sum32()) // 将哈希值转换为字符串形式
 
 	// 将哈希值添加到 Redis 的 set 集合中
-	result, err := database.RDB.SAdd(ctx, "all_urls", hashedUrl).Result()
+	result, err := database.RDB.SAdd(ctx, "all_urls", url).Result()
 	if err != nil {
 		// 错误处理：Redis 操作失败
 		return fmt.Errorf("failed to add hashed URL to Redis set: %v", err)
@@ -154,14 +153,14 @@ func AddUrlToAllUrlSet(url string) error {
 // IsUrlInAllUrls 判断是否在all_urls中
 func IsUrlInAllUrls(url string) (bool, error) {
 	// 计算 URL 哈希值
-	h := fnv.New32a()
-	_, err := h.Write([]byte(url))
-	if err != nil {
-		// 错误处理：计算哈希值失败
-		log.Printf("failed to calculate hash for URL %s: %v\n", url, err)
-	}
-	hashedUrl := fmt.Sprintf("%d", h.Sum32()) // 将哈希值转换为字符串形式
-	return database.RDB.SIsMember(context.Background(), "all_urls", hashedUrl).Result()
+	//h := fnv.New32a()
+	//_, err := h.Write([]byte(url))
+	//if err != nil {
+	//	// 错误处理：计算哈希值失败
+	//	log.Printf("failed to calculate hash for URL %s: %v\n", url, err)
+	//}
+	//hashedUrl := fmt.Sprintf("%d", h.Sum32()) // 将哈希值转换为字符串形式
+	return database.RDB.SIsMember(context.Background(), "all_urls", url).Result()
 }
 
 // DeleteAllVisitedUrls 删除visited_urls中的所有
